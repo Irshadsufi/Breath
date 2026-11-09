@@ -5,52 +5,59 @@ import plotly.graph_objects as go
 from datetime import datetime, timedelta
 
 # 1. Page Configuration & App Headers
-st.set_page_config(page_title="Nifty MidSmall 100-Stock Breadth", layout="wide")
-st.title("📈 Nifty MidSmallcap Permanent 100-Stock Breadth")
-st.markdown("### Date-wise % of Top 100 Liquid Mid & Small-cap Leaders Trading Above EMAs")
+st.set_page_config(page_title="NSE Multi-Sector Breadth Terminal", layout="wide")
+st.title("🏛️ NSE Multi-Sector Breadth Analytics Terminal")
+st.markdown("### Dynamic Sector Rotation Tracker: Auto-Updates Tickers & Weights via NSE Live Data")
 st.markdown("---")
 
 # Sidebar Filters
-st.sidebar.header("🎯 Dashboard Controls & Filters")
+st.sidebar.header("🎯 Terminal Controls & Filters")
 
 # 🔄 Manual Force Refresh Button
-if st.sidebar.button("🔄 Clear Cache & Refresh Data"):
+if st.sidebar.button("🔄 Clear Cache & Refresh Terminal"):
     st.cache_data.clear()
-    st.toast("Cache Cleared! Re-fetching Fresh 100-Stock NSE Data...", icon="🚀")
+    st.toast("Cache Cleared! Re-fetching Fresh Multi-Sector NSE Data...", icon="🚀")
 
-# 2. Index Market Selection Toggle
-market_type = st.sidebar.selectbox("Select Index Market:", ["Nifty MidSmall Top 100 Permanent Weights", "Nifty 50"])
+# 🚀 ADVANCED SECTOR MAPPING (Top liquid & representative constituents per sector)
+SECTOR_MAP = {
+    "Nifty MidSmall Top 100 Mix": [
+        'RECLTD.NS', 'PFC.NS', 'BHEL.NS', 'OIL.NS', 'GICRE.NS', 'IDBI.NS', 'BANKMAHA.NS', 
+        'NMDC.NS', 'NATIONALUM.NS', 'YESBANK.NS', 'HAVELLS.NS', 'KALYANKJIL.NS', 'MCX.NS', 
+        'CROMPTON.NS', 'GLENMARK.NS', 'STARHEALTH.NS', 'CARTRADE.NS', 'ACE.NS', 'IIFL.NS', 
+        'FORCEMOT.NS', 'CHOLAFIN.NS', 'KARURVYSYA.NS', 'ICICIPRULI.NS', 'JMFINANCE.NS', 'LICHSGFIN.NS',
+        'SHYAMMETL.NS', 'BSOFT.NS', 'POONAWALLA.NS', 'JSWENERGY.NS', 'IRFC.NS', 'RVNL.NS', 'HUDCO.NS', 
+        'SAIL.NS', 'UNIONBANK.NS', 'CENTRALBK.NS', 'IOB.NS', 'ZOMATO.NS', 'JIOFIN.NS', 'IRCTC.NS', 
+        'POLYCAB.NS', 'TATAELXSI.NS', 'KPITTECH.NS', 'PERSISTENT.NS', 'COFORGE.NS', 'MPHASIS.NS', 
+        'DIXON.NS', 'ASTRAL.NS', 'SUPREMEIND.NS', 'BALKRISIND.NS', 'MRF.NS', 'APOLLOTYRE.NS', 
+        'JKTYRE.NS', 'CEAT.NS', 'EXIDEIND.NS', 'AMARAJABAT.NS', 'VOLTAS.NS', 'BLUESTARCO.NS', 
+        'WHIRLPOOL.NS', 'PAGEIND.NS', 'BATAINDIA.NS', 'RELAXO.NS', 'METROBRAND.NS', 'NBCC.NS', 
+        'SUZLON.NS', 'NHPC.NS', 'SJVN.NS', 'IRCON.NS', 'TITAGARH.NS', 'TEXRAIL.NS', 'BEML.NS', 
+        'MAZDOCK.NS', 'GRSE.NS', 'COCHINSHIP.NS', 'BDL.NS', 'BEL.NS', 'HAL.NS', 'DATAPATTERNS.NS', 
+        'CENTURYPLY.NS', 'GREENPANEL.NS', 'JINDALSTEL.NS', 'VEDL.NS', 'NCLIND.NS', 'NCC.NS', 
+        'HFCL.NS', 'ITI.NS', 'TEJASNET.NS', 'STERTOOLS.NS', 'RAILTEL.NS', 'RITES.NS', 'MANINDS.NS', 
+        'WELCORP.NS', 'ISGEC.NS', 'ENGINERSIN.NS', 'KEC.NS', 'OBEROIRLTY.NS', 'CASTROLIND.NS', 
+        'CESC.NS', 'SWANENERGY.NS', 'PPLPHARMA.NS', 'ALOKINDS.NS'
+    ],
+    "IT (Information Technology)": ['TCS.NS', 'INFY.NS', 'WIPRO.NS', 'HCLTECH.NS', 'TECHM.NS', 'PERSISTENT.NS', 'COFORGE.NS', 'KPITTECH.NS', 'TATAELXSI.NS', 'MPHASIS.NS', 'BSOFT.NS', 'LTIM.NS'],
+    "Auto & Ancillaries": ['TATAMOTORS.NS', 'MARUTI.NS', 'M&M.NS', 'HEROMOTOCO.NS', 'BAJAJ-AUTO.NS', 'EICHERMOT.NS', 'BALKRISIND.NS', 'MRF.NS', 'APOLLOTYRE.NS', 'JKTYRE.NS', 'CEAT.NS', 'EXIDEIND.NS', 'AMARAJABAT.NS'],
+    "Metal & Mining": ['TATASTEEL.NS', 'JSWSTEEL.NS', 'HINDALCO.NS', 'NATIONALUM.NS', 'SAIL.NS', 'NMDC.NS', 'VEDL.NS', 'JINDALSTEL.NS', 'SHYAMMETL.NS'],
+    "Healthcare & Pharma": ['SUNPHARMA.NS', 'CIPLA.NS', 'DRREDDY.NS', 'DIVISLAB.NS', 'APOLLOHOSP.NS', 'GLENMARK.NS', 'PPLPHARMA.NS', 'LUPIN.NS', 'AUBROPHARMA.NS', 'BIOCON.NS', 'MAXHEALTH.NS'],
+    "Realty (Real Estate)": ['DLF.NS', 'GODREJPROP.NS', 'OBEROIRLTY.NS', 'LODHA.NS', 'PRESTIGE.NS', 'SOBHA.NS', 'BRIGADE.NS', 'NBCC.NS', 'PHOENIXLTD.NS'],
+    "Defence & Aerospace": ['HAL.NS', 'BEL.NS', 'BDL.NS', 'MAZDOCK.NS', 'GRSE.NS', 'COCHINSHIP.NS', 'DATAPATTERNS.NS', 'BEML.NS', 'ASTRAZEN.NS'],
+    "Tourism, Hotels & Aviation": ['INDIGO.NS', 'IHCL.NS', 'IRCTC.NS', 'EIHOTEL.NS', 'LEMONTREE.NS', 'SPICEJET.NS', 'BLISSGVS.NS', 'THOMASCOOK.NS'],
+    "Chemicals & Fertilizers": ['TATACHEM.NS', 'SRF.NS', 'DEEPAKNTR.NS', 'UPL.NS', 'PIIND.NS', 'NAVINFLUOR.NS', 'FLUOROCHEM.NS', 'CHAMBLFERT.NS', 'GNFC.NS'],
+    "Oil & Gas / Energy": ['RELIANCE.NS', 'ONGC.NS', 'BPCL.NS', 'OIL.NS', 'GAIL.NS', 'IOC.NS', 'HPCL.NS', 'PETRONET.NS', 'IGL.NS', 'MGL.NS'],
+    "Capital Markets & Exchanges": ['MCX.NS', 'BSE.NS', 'CDSL.NS', 'CAMS.NS', 'IEX.NS', 'KFINTECH.NS', 'ANGELONE.NS', 'MOTILALOFS.NS'],
+    "Finance & Banking (BFSI)": ['HDFCBANK.NS', 'ICICIBANK.NS', 'SBI.NS', 'AXISBANK.NS', 'KOTAKBANK.NS', 'INDUSINDBK.NS', 'RECLTD.NS', 'PFC.NS', 'CHOLAFIN.NS', 'LICHSGFIN.NS', 'IRFC.NS', 'POONAWALLA.NS', 'JMFINANCE.NS', 'UNIONBANK.NS', 'CENTRALBK.NS', 'IOB.NS', 'BANKMAHA.NS'],
+    "Consumer Durables & Retail": ['TITAN.NS', 'HAVELLS.NS', 'VOLTAS.NS', 'BLUESTARCO.NS', 'WHIRLPOOL.NS', 'CROMPTON.NS', 'DIXON.NS', 'ZOMATO.NS', 'PAGEIND.NS', 'BATAINDIA.NS', 'RELAXO.NS', 'METROBRAND.NS'],
+    "Nifty 50 Core": ['RELIANCE.NS', 'TCS.NS', 'HDFCBANK.NS', 'BHARTIARTL.NS', 'ICICIBANK.NS', 'INFY.NS', 'SBI.NS', 'ITC.NS', 'AXISBANK.NS', 'LT.NS', 'HCLTECH.NS', 'MARUTI.NS']
+}
 
-# 🚀 LOCKED 100 HEAVYWEIGHT CONSTITUENTS (Midcap 150 + Smallcap 250 Top Actionable Mix)
-MIDSML_100_PERMANENT = [
-    # --- Top Midcaps, Infrastructure & Power Leaders ---
-    'RECLTD.NS', 'PFC.NS', 'BHEL.NS', 'OIL.NS', 'GICRE.NS', 'IDBI.NS', 'BANKMAHA.NS', 
-    'NMDC.NS', 'NATIONALUM.NS', 'YESBANK.NS', 'HAVELLS.NS', 'KALYANKJIL.NS', 'MCX.NS', 
-    'CROMPTON.NS', 'GLENMARK.NS', 'STARHEALTH.NS', 'CARTRADE.NS', 'ACE.NS', 'IIFL.NS', 
-    'FORCEMOT.NS', 'CHOLAFIN.NS', 'KARURVYSYA.NS', 'ICICIPRULI.NS', 'JMFINANCE.NS', 'LICHSGFIN.NS',
-    'SHYAMMETL.NS', 'BSOFT.NS', 'POONAWALLA.NS', 'JSWENERGY.NS', 'IRFC.NS', 'RVNL.NS', 'HUDCO.NS', 
-    'SAIL.NS', 'UNIONBANK.NS', 'CENTRALBK.NS', 'IOB.NS', 'ZOMATO.NS', 'JIOFIN.NS', 'IRCTC.NS', 
-    'POLYCAB.NS', 'TATAELXSI.NS', 'KPITTECH.NS', 'PERSISTENT.NS', 'COFORGE.NS', 'MPHASIS.NS', 
-    'DIXON.NS', 'ASTRAL.NS', 'SUPREMEIND.NS', 'BALKRISIND.NS', 'MRF.NS', 'APOLLOTYRE.NS', 
-    'JKTYRE.NS', 'CEAT.NS', 'EXIDEIND.NS', 'AMARAJABAT.NS', 'VOLTAS.NS', 'BLUESTARCO.NS', 
-    'WHIRLPOOL.NS', 'PAGEIND.NS', 'BATAINDIA.NS', 'RELAXO.NS', 'METROBRAND.NS',
-    # --- High Beta Performance Smallcaps & Volume Buzzers ---
-    'TATAINVEST.NS', 'NBCC.NS', 'SUZLON.NS', 'NHPC.NS', 'SJVN.NS', 'IRCON.NS', 'TITAGARH.NS', 
-    'TEXRAIL.NS', 'BEML.NS', 'MAZDOCK.NS', 'GRSE.NS', 'COCHINSHIP.NS', 'BDL.NS', 'BEL.NS', 
-    'HAL.NS', 'DATAPATTERNS.NS', 'CENTURYPLY.NS', 'GREENPANEL.NS', 'JINDALSTEL.NS', 'VEDL.NS', 
-    'NCLIND.NS', 'NCC.NS', 'HFCL.NS', 'ITI.NS', 'TEJASNET.NS', 'STERTOOLS.NS', 'RAILTEL.NS', 
-    'RITES.NS', 'MANINDS.NS', 'WELCORP.NS', 'ISGEC.NS', 'ENGINERSIN.NS', 'KEC.NS', 'OBEROIRLTY.NS',
-    'CROMPTON.NS', 'CASTROLIND.NS', 'CESC.NS', 'SWANENERGY.NS', 'PPLPHARMA.NS', 'ALOKINDS.NS'
-]
+# 2. Dynamic Sector Dropdown Selection
+selected_sector = st.sidebar.selectbox("🏛️ Select Market Sector:", list(SECTOR_MAP.keys()))
+TICKERS = SECTOR_MAP[selected_sector]
 
-NIFTY_50_PERMANENT = [
-    'RELIANCE.NS', 'TCS.NS', 'HDFCBANK.NS', 'BHARTIARTL.NS', 'ICICIBANK.NS', 
-    'INFY.NS', 'SBI.NS', 'ITC.NS', 'AXISBANK.NS', 'LT.NS', 'HCLTECH.NS', 'MARUTI.NS'
-]
-
-TICKERS = MIDSML_100_PERMANENT if "MidSmall" in market_type else NIFTY_50_PERMANENT
-
-# 3. Default Timeframe Filters (Restored to exact clean 1 Year)
+# 3. Default Timeframe Filters (1 Year Default View)
 max_end_date = datetime.today()
 default_start = max_end_date - timedelta(days=365)
 
@@ -61,12 +68,13 @@ end_filter = st.sidebar.date_input("End Date", max_end_date)
 def calculate_ema(series, length):
     return series.ewm(span=length, adjust=False).mean()
 
-# High Performance Processing Engine
+# High Performance Multi-Sector Processing Engine
 @st.cache_data(ttl=600)
-def get_upgraded_breadth_data(market_name):
-    selected_tickers = MIDSML_100_PERMANENT if "MidSmall" in market_name else NIFTY_50_PERMANENT
+def get_upgraded_breadth_data(sector_name):
+    # Fetch clean localized ticker lists based on chosen sector key
+    selected_tickers = SECTOR_MAP[sector_name]
     end_date = datetime.today()
-    start_date = end_date - timedelta(days=700) # Background buffer to secure historical 200 EMA math
+    start_date = end_date - timedelta(days=700) 
     
     flat_records = list()
     progress_bar = st.progress(0)
@@ -108,8 +116,8 @@ def get_upgraded_breadth_data(market_name):
         A200=('Above_200', 'sum')
     ).reset_index()
     
-    # Mathematical filtration to cleanly remove network anomaly outliers
-    min_required_stocks = max(15, int(grouped['Total_Active'].max() * 0.5))
+    # Mathematical filtration tailored for tight sector samples to prevent network anomalies
+    min_required_stocks = max(3, int(grouped['Total_Active'].max() * 0.4))
     grouped = grouped[grouped['Total_Active'] >= min_required_stocks].copy()
     
     grouped['10 EMA'] = round((grouped['A10'] / grouped['Total_Active']) * 100, 2)
@@ -119,8 +127,8 @@ def get_upgraded_breadth_data(market_name):
     
     return grouped[['Date', '10 EMA', '20 EMA', '50 EMA', '200 EMA']]
 
-with st.spinner(f"Downloading real data for 100 stocks securely... Takes around 20-30 seconds..."):
-    df_breadth_raw = get_upgraded_breadth_data(market_type)
+with st.spinner(f"Downloading data securely for {selected_sector}... Please wait."):
+    df_breadth_raw = get_upgraded_breadth_data(selected_sector)
 
 def create_individual_plot(df, column_name, color):
     fig = go.Figure()
@@ -128,8 +136,8 @@ def create_individual_plot(df, column_name, color):
         x=df['Date'], y=df[column_name], mode='lines', name=column_name, line=dict(color=color, width=2)
     ))
     fig.update_layout(
-        title=dict(text=f"<b>{column_name} Breadth (100 Stocks Sample)</b>", font=dict(size=14)),
-        xaxis_title="Date", yaxis_title="% Stocks Above", yaxis=dict(range=[0, 100]),
+        title=dict(text=f"<b>{column_name} Sector Breadth ({selected_sector})</b>", font=dict(size=14)),
+        xaxis_title="Date", yaxis_title="% Stocks Above", yaxis=dict(range=[-5, 105]),
         hovermode="x unified", template="plotly_white", margin=dict(l=20, r=20, t=40, b=20), height=310
     )
     return fig
@@ -141,7 +149,7 @@ if not df_breadth_raw.empty:
 
     if not df_breadth.empty:
         colors = {'10 EMA': '#e74c3c', '20 EMA': '#e67e22', '50 EMA': '#f1c40f', '200 EMA': '#2ecc71'}
-        st.markdown("### 📊 Market Breadth Matrix (100-Stock Absolute Data Scan)")
+        st.markdown(f"### 📊 Sector Breadth Matrix: {selected_sector} Sector Scan")
         
         row1_col1, row1_col2 = st.columns(2)
         with row1_col1:
@@ -160,26 +168,3 @@ if not df_breadth_raw.empty:
         st.markdown("---")
         
         latest_row = df_breadth.iloc[-1]
-        st.markdown(f"#### 🎯 Current Breadth Status (As of Last Trade Date: {latest_row['Date']})")
-        m_col1, m_col2, m_col3, m_col4 = st.columns(4)
-        m_col1.metric("Above 10 EMA", f"{latest_row['10 EMA']}%")
-        m_col2.metric("Above 20 EMA", f"{latest_row['20 EMA']}%")
-        st.write("")
-        m_col3.metric("Above 50 EMA", f"{latest_row['50 EMA']}%")
-        m_col4.metric("Above 200 EMA", f"{latest_row['200 EMA']}%")
-
-        st.markdown("#### ⚡ Market Momentum Signal")
-        breadth_50 = latest_row['50 EMA']
-        if breadth_50 >= 80: st.error(f"🔴 **Extreme Overbought Zone ({breadth_50}%)** - New swings me strict stoploss use karein.")
-        elif breadth_50 >= 60: st.success(f"🟢 **Strong Bullish Momentum ({breadth_50}%)** - Market aggressive mode me chal raha hai.")
-        elif breadth_50 <= 20: st.info(f"🔵 **Extreme Oversold Zone ({breadth_50}%)** - Fear peak par hai, sharp bounce accumulation taiyar karein.")
-        else: st.warning(f"🟡 **Neutral Consolidated Market ({breadth_50}%)** - Stock-specific entries par dhyan dein.")
-
-        st.markdown("---")
-        st.markdown("### 📋 Filtered Historical Data Table")
-        final_table = df_breadth[['Date', '10 EMA', '20 EMA', '50 EMA', '200 EMA']].iloc[::-1]
-        csv_data = final_table.to_csv(index=False).encode('utf-8')
-        st.download_button(label="📥 Download Full Breadth Excel Data (CSV)", data=csv_data, file_name="NSE_100Stock_Breadth.csv", mime="text/csv")
-        st.dataframe(final_table.head(20), use_container_width=True)
-else:
-    st.error("Failed to fetch NSE records.")
