@@ -2,12 +2,13 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from datetime import datetime, timedelta
 
 # 1. Page Configuration & Title
 st.set_page_config(page_title="Nifty MidSmall 400 Breadth", layout="wide")
 st.title("📈 Nifty MidSmallcap 400 Breadth Dashboard")
-st.markdown("### Date-wise % of Mid & Small-cap Stocks Trading Above Selected EMAs")
+st.markdown("### Date-wise % of Mid & Small-cap Stocks Trading Above Selected EMAs (Separate Grids)")
 st.markdown("---")
 
 # Sidebar Filters
@@ -31,9 +32,9 @@ NIFTY_50_TICKERS = [
 
 TICKERS = MIDSML_400_TICKERS if "MidSmall" in market_type else NIFTY_50_TICKERS
 
-# 3. EMA Selection Filter
+# 3. Dynamic Sidebar EMA Checklist Filter (100 EMA removed)
 st.sidebar.subheader("📐 Select EMAs to Display")
-available_emas = ['10 EMA', '20 EMA', '50 EMA', '100 EMA', '200 EMA']
+available_emas = ['10 EMA', '20 EMA', '50 EMA', '200 EMA']
 selected_emas = st.sidebar.multiselect("Choose EMA Lines:", available_emas, default=available_emas)
 
 # 4. Date Filters
@@ -53,8 +54,7 @@ def get_upgraded_breadth_data(market_name):
     end_date = datetime.today()
     start_date = end_date - timedelta(days=550) 
     
-    # Store records in list to flatten later
-    flat_records = []
+    flat_records = list()
     progress_bar = st.progress(0)
     
     for i, ticker in enumerate(selected_tickers):
@@ -64,7 +64,6 @@ def get_upgraded_breadth_data(market_name):
                 df['EMA_10'] = calculate_ema(df['Close'], 10)
                 df['EMA_20'] = calculate_ema(df['Close'], 20)
                 df['EMA_50'] = calculate_ema(df['Close'], 50)
-                df['EMA_100'] = calculate_ema(df['Close'], 100)
                 df['EMA_200'] = calculate_ema(df['Close'], 200)
                 
                 for date, row in df.iterrows():
@@ -74,7 +73,6 @@ def get_upgraded_breadth_data(market_name):
                         'Above_10': 1 if row['Close'] > row['EMA_10'] else 0,
                         'Above_20': 1 if row['Close'] > row['EMA_20'] else 0,
                         'Above_50': 1 if row['Close'] > row['EMA_50'] else 0,
-                        'Above_100': 1 if row['Close'] > row['EMA_100'] else 0,
                         'Above_200': 1 if row['Close'] > row['EMA_200'] else 0
                     })
         except Exception:
@@ -85,26 +83,23 @@ def get_upgraded_breadth_data(market_name):
     if not flat_records:
         return pd.DataFrame()
         
-    # Standard grouping logic without dictionary pointer keys
     master_df = pd.DataFrame(flat_records)
     grouped = master_df.groupby('Date').agg(
         Total_Active=('Ticker', 'count'),
         A10=('Above_10', 'sum'),
         A20=('Above_20', 'sum'),
         A50=('Above_50', 'sum'),
-        A100=('Above_100', 'sum'),
         A200=('Above_200', 'sum')
     ).reset_index()
     
     grouped['10 EMA'] = round((grouped['A10'] / grouped['Total_Active']) * 100, 2)
     grouped['20 EMA'] = round((grouped['A20'] / grouped['Total_Active']) * 100, 2)
     grouped['50 EMA'] = round((grouped['A50'] / grouped['Total_Active']) * 100, 2)
-    grouped['100 EMA'] = round((grouped['A100'] / grouped['Total_Active']) * 100, 2)
     grouped['200 EMA'] = round((grouped['A200'] / grouped['Total_Active']) * 100, 2)
     
-    return grouped[['Date', '10 EMA', '20 EMA', '50 EMA', '100 EMA', '200 EMA']]
+    return grouped[['Date', '10 EMA', '20 EMA', '50 EMA', '200 EMA']]
 
-# Run dynamic logic
+# Run calculation engine
 with st.spinner(f"Downloading data for {market_type} constituents..."):
     df_breadth_raw = get_upgraded_breadth_data(market_type)
 
@@ -115,24 +110,38 @@ if not df_breadth_raw.empty:
 
     if not df_breadth.empty:
         if selected_emas:
-            fig = go.Figure()
-            colors = {'10 EMA': '#e74c3c', '20 EMA': '#e67e22', '50 EMA': '#f1c40f', '100 EMA': '#3498db', '200 EMA': '#2ecc71'}
+            # 4 separate rows grid mapping using subplots feature
+            num_plots = len(selected_emas)
+            fig = make_subplots(
+                rows=num_plots, cols=1, 
+                shared_xaxes=True, 
+                vertical_spacing=0.06,
+                subplot_titles=[f"<b>Trend Overview: {ema}</b>" for ema in selected_emas]
+            )
             
-            for ema in selected_emas:
-                fig.add_trace(go.Scatter(
-                    x=df_breadth['Date'], y=df_breadth[ema], 
-                    mode='lines', name=ema, line=dict(color=colors[ema], width=2.5)
-                ))
+            colors = {'10 EMA': '#e74c3c', '20 EMA': '#e67e22', '50 EMA': '#f1c40f', '200 EMA': '#2ecc71'}
+            
+            for idx, ema in enumerate(selected_emas):
+                fig.add_trace(
+                    go.Scatter(
+                        x=df_breadth['Date'], y=df_breadth[ema], 
+                        mode='lines', name=ema, line=dict(color=colors[ema], width=2)
+                    ),
+                    row=idx+1, col=1
+                )
+                fig.update_yaxes(title_text="% Stocks Above", range=[0, 105], row=idx+1, col=1)
                 
             fig.update_layout(
-                title=f"<b>Market Breadth Dynamic Chart ({market_type})</b>",
-                xaxis_title="Date", yaxis_title="% of Stocks Above EMA",
-                yaxis=dict(range=[0, 105]), hovermode="x unified",
-                template="plotly_white", height=600
+                title=f"<b>Multi-Panel Market Breadth Subplots ({market_type})</b>",
+                xaxis_title="Date",
+                hovermode="x unified",
+                template="plotly_white",
+                height=220 * num_plots, # Dynamic sizing based on grid count
+                showlegend=False
             )
             st.plotly_chart(fig, use_container_width=True)
         else:
-            st.warning("Kripya Sidebar se kam se kam ek EMA select karein chart dekhne ke liye.")
+            st.warning("Kripya Sidebar se kam se kam ek EMA select karein panels dekhne ke liye.")
         
         latest_row = df_breadth.iloc[-1]
         st.markdown(f"#### 🎯 Current Breadth Status (As of Last Trade Date: {latest_row['Date']})")
