@@ -4,20 +4,17 @@ import pandas as pd
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
 
-# 1. Page Configuration & App Headers
 st.set_page_config(page_title="NSE Multi-Sector Breadth Terminal", layout="wide")
 st.title("🏛️ NSE Multi-Sector Breadth Analytics Terminal")
 st.markdown("### Dynamic Sector Rotation Tracker: Fully Automated Smooth Indicators")
 st.markdown("---")
 
-# Sidebar Controls
 st.sidebar.header("🎯 Terminal Controls")
 
 if st.sidebar.button("🔄 Clear Cache & Refresh Terminal"):
     st.cache_data.clear()
     st.toast("Cache Cleared! Fetching Fresh Multi-Sector NSE Data...", icon="🚀")
 
-# 🚀 LARGE SCALE SECTOR MAPPING (180+ Tickers for high data density and absolute smoothness)
 SECTOR_MAP = {
     "Nifty MidSmall Top Dynamic Mix": [
         'RECLTD.NS', 'PFC.NS', 'BHEL.NS', 'OIL.NS', 'GICRE.NS', 'IDBI.NS', 'BANKMAHA.NS', 
@@ -108,11 +105,9 @@ def get_upgraded_breadth_data(sector_name):
         A200=('Above_200', 'sum')
     ).reset_index()
     
-    # Secure cut-out logic to completely prevent flat straight gaps on charts
     min_required_stocks = max(3, int(grouped['Total_Active'].max() * 0.5))
     grouped = grouped[grouped['Total_Active'] >= min_required_stocks].copy()
     
-    # 🚀 ADVANCED MATHEMATICAL SMOOTHING: 3-Day EMA to make lines rounded like 400 stocks
     grouped['Raw_10'] = round((grouped['A10'] / grouped['Total_Active']) * 100, 2)
     grouped['Raw_20'] = round((grouped['A20'] / grouped['Total_Active']) * 100, 2)
     grouped['Raw_50'] = round((grouped['A50'] / grouped['Total_Active']) * 100, 2)
@@ -125,7 +120,7 @@ def get_upgraded_breadth_data(sector_name):
     
     return grouped[['Date', '10 EMA', '20 EMA', '50 EMA', '200 EMA']]
 
-with st.spinner(f"Downloading data safely for {selected_sector}... Please wait."):
+with st.spinner(f"Downloading data safely... Please wait."):
     df_breadth_raw = get_upgraded_breadth_data(selected_sector)
 
 def create_individual_plot(df, column_name, color):
@@ -149,5 +144,7 @@ if not df_breadth_raw.empty:
         colors = {'10 EMA': '#e74c3c', '20 EMA': '#e67e22', '50 EMA': '#f1c40f', '200 EMA': '#2ecc71'}
         st.markdown(f"### 📊 Sector Breadth Matrix: {selected_sector} Sector Scan")
         
-        col1, col2 = st.columns(2)
-        with col1:
+        # 🚀 NO MORE COLUMNS - Linear sequential order to guarantee zero indentation errors
+        st.plotly_chart(create_individual_plot(df_breadth, '10 EMA', colors['10 EMA']), use_container_width=True)
+        st.plotly_chart(create_individual_plot(df_breadth, '20 EMA', colors['20 EMA']), use_container_width=True)
+        st.plotly_chart(create_individual_plot(df_breadth, '50 EMA', colors['50 EMA']), use_container_width=True)
