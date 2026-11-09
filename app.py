@@ -4,7 +4,7 @@ import pandas as pd
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
 
-# 1. Page Configuration & Title
+# 1. Page Configuration
 st.set_page_config(page_title="Nifty MidSmall Dynamic Breadth", layout="wide")
 st.title("📈 Nifty MidSmallcap Dynamic 100-Stock Breadth")
 st.markdown("### Fully Automated Index Tracker: Auto-Updates Tickers & Weights via NSE Live Data")
@@ -13,17 +13,14 @@ st.markdown("---")
 # Sidebar Filters
 st.sidebar.header("🎯 Dashboard Controls & Filters")
 
-# 🔄 Force Refresh Button
 if st.sidebar.button("🔄 Clear Cache & Refresh Index Data"):
     st.cache_data.clear()
     st.toast("Cache Cleared! Re-fetching Live Index Weights from NSE...", icon="🚀")
 
-# 2. Index Selection
 market_type = st.sidebar.selectbox("Select Index Market:", ["Nifty MidSmall Top 100 Dynamic Weights", "Nifty 50"])
 
-# 3. Date Range Configuration (🚀 UPDATED: Default view restored to exact 1 Year)
 max_end_date = datetime.today()
-default_start = max_end_date - timedelta(days=365) # Default view 1 saal ka rahega
+default_start = max_end_date - timedelta(days=365)
 
 st.sidebar.subheader("📅 Select Custom Date Range")
 start_filter = st.sidebar.date_input("Start Date", default_start)
@@ -32,32 +29,22 @@ end_filter = st.sidebar.date_input("End Date", max_end_date)
 def calculate_ema(series, length):
     return series.ewm(span=length, adjust=False).mean()
 
-# Dynamic Index Stock Scrapper
 @st.cache_data(ttl=86400)
 def fetch_live_nse_index_tickers(market_name):
     if "Nifty 50" in market_name:
         return ['RELIANCE.NS', 'TCS.NS', 'HDFCBANK.NS', 'BHARTIARTL.NS', 'ICICIBANK.NS', 'INFY.NS', 'SBI.NS', 'ITC.NS']
-        
     try:
         url = "https://githubusercontent.com"
         df_index = pd.read_csv(url)
         symbols = [str(sym).strip() + ".NS" for sym in df_index['Symbol'].tolist() if pd.notna(sym)]
-        if len(symbols) > 100:
-            return symbols[:100]
-        return symbols
+        return symbols[:100] if len(symbols) > 100 else symbols
     except Exception:
-        return [
-            'LICHSGFIN.NS', 'BHEL.NS', 'RECLTD.NS', 'PFC.NS', 'OIL.NS', 'GICRE.NS', 'IDBI.NS',
-            'BANKMAHA.NS', 'NMDC.NS', 'NATIONALUM.NS', 'YESBANK.NS', 'HAVELLS.NS', 'KALYANKJIL.NS', 
-            'MCX.NS', 'CROMPTON.NS', 'GLENMARK.NS', 'STARHEALTH.NS', 'CARTRADE.NS', 'ACE.NS', 'SUZLON.NS'
-        ]
+        return ['LICHSGFIN.NS', 'BHEL.NS', 'RECLTD.NS', 'PFC.NS', 'OIL.NS', 'GICRE.NS', 'NMDC.NS', 'SUZLON.NS']
 
-# Processing Engine
 @st.cache_data(ttl=600)
 def get_upgraded_breadth_data(market_name):
     selected_tickers = fetch_live_nse_index_tickers(market_name)
     end_date = datetime.today()
-    # Fetch extra days in background to keep the 200 EMA calculation accurate from day one
     start_date = end_date - timedelta(days=700) 
     
     flat_records = list()
@@ -71,6 +58,9 @@ def get_upgraded_breadth_data(market_name):
                 df['EMA_20'] = calculate_ema(df['Close'], 20)
                 df['EMA_50'] = calculate_ema(df['Close'], 50)
                 df['EMA_200'] = calculate_ema(df['Close'], 200)
+                
+                # Drop rows where critical calculations are NaN to prevent drop-spikes
+                df.dropna(subset=['Close', 'EMA_10', 'EMA_20', 'EMA_50', 'EMA_200'], inplace=True)
                 
                 for date, row in df.iterrows():
                     flat_records.append({
@@ -98,6 +88,9 @@ def get_upgraded_breadth_data(market_name):
         A200=('Above_200', 'sum')
     ).reset_index()
     
+    # Bug Fix: Ensure division only occurs when active counts exist, preventing math glitches
+    grouped = grouped[grouped['Total_Active'] > 5].copy() # Filter outliers out
+    
     grouped['10 EMA'] = round((grouped['A10'] / grouped['Total_Active']) * 100, 2)
     grouped['20 EMA'] = round((grouped['A20'] / grouped['Total_Active']) * 100, 2)
     grouped['50 EMA'] = round((grouped['A50'] / grouped['Total_Active']) * 100, 2)
@@ -105,22 +98,18 @@ def get_upgraded_breadth_data(market_name):
     
     return grouped[['Date', '10 EMA', '20 EMA', '50 EMA', '200 EMA']]
 
-# Run Calculation
-with st.spinner(f"Reading Live NSE weights & downloading data for {market_type}... Please wait 20-30 seconds."):
+with st.spinner(f"Downloading data safely..."):
     df_breadth_raw = get_upgraded_breadth_data(market_type)
 
 def create_individual_plot(df, column_name, color):
     fig = go.Figure()
     fig.add_trace(go.Scatter(
-        x=df['Date'], y=df[column_name],
-        mode='lines', name=column_name,
-        line=dict(color=color, width=2)
+        x=df['Date'], y=df[column_name], mode='lines', name=column_name, line=dict(color=color, width=2)
     ))
     fig.update_layout(
-        title=dict(text=f"<b>{column_name} Breadth (Live Auto-Tracked Index)</b>", font=dict(size=14)),
-        xaxis_title="Date", yaxis_title="% Stocks Above",
-        yaxis=dict(range=[0, 100]), hovermode="x unified",
-        template="plotly_white", margin=dict(l=20, r=20, t=40, b=20), height=310
+        title=dict(text=f"<b>{column_name} Breadth (Data Cleaned)</b>", font=dict(size=14)),
+        xaxis_title="Date", yaxis_title="% Stocks Above", yaxis=dict(range=),
+        hovermode="x unified", template="plotly_white", margin=dict(l=20, r=20, t=40, b=20), height=310
     )
     return fig
 
@@ -157,33 +146,18 @@ if not df_breadth_raw.empty:
         m_col3.metric("Above 50 EMA", f"{latest_row['50 EMA']}%")
         m_col4.metric("Above 200 EMA", f"{latest_row['200 EMA']}%")
 
-        # Market Momentum Signal
         st.markdown("#### ⚡ Market Momentum Signal")
         breadth_50 = latest_row['50 EMA']
-        if breadth_50 >= 80:
-            st.error(f"🔴 **Extreme Overbought Zone ({breadth_50}%)** - Index maximum limits par chal raha hai.")
-        elif breadth_50 >= 60:
-            st.success(f"🟢 **Strong Bullish Momentum ({breadth_50}%)** - Buy on dips strategy fine rahegi.")
-        elif breadth_50 <= 20:
-            st.info(f"🔵 **Extreme Oversold Zone ({breadth_50}%)** - Valuation low par hain, accumulate long setups.")
-        else:
-            st.warning(f"🟡 **Neutral Consolidated Market ({breadth_50}%)** - Rangebound stock trading selective setup use karein.")
+        if breadth_50 >= 80: st.error(f"🔴 **Extreme Overbought Zone ({breadth_50}%)**")
+        elif breadth_50 >= 60: st.success(f"🟢 **Strong Bullish Momentum ({breadth_50}%)**")
+        elif breadth_50 <= 20: st.info(f"🔵 **Extreme Oversold Zone ({breadth_50}%)**")
+        else: st.warning(f"🟡 **Neutral Consolidated Market ({breadth_50}%)**")
 
         st.markdown("---")
-        
-        # Download Action
         st.markdown("### 📋 Filtered Historical Data Table")
         final_table = df_breadth[['Date', '10 EMA', '20 EMA', '50 EMA', '200 EMA']].iloc[::-1]
-        
         csv_data = final_table.to_csv(index=False).encode('utf-8')
-        st.download_button(
-            label="📥 Download Dynamic Breadth Data (CSV/Excel)",
-            data=csv_data,
-            file_name=f"NSE_Dynamic_Breadth_{market_type}.csv",
-            mime="text/csv"
-        )
-        st.dataframe(final_table.drop(columns=['Date_Parsed']).head(20) if 'Date_Parsed' in final_table.columns else final_table.head(20), use_container_width=True)
-    else:
-        st.warning("Selected date range me koi data active nahi hai.")
+        st.download_button(label="📥 Download Data", data=csv_data, file_name="NSE_Breadth.csv", mime="text/csv")
+        st.dataframe(final_table.head(20), use_container_width=True)
 else:
-    st.error("Failed to fetch NSE live index records. Please try again.")
+    st.error("Failed to fetch NSE records.")
