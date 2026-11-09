@@ -2,13 +2,12 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 from datetime import datetime, timedelta
 
 # 1. Page Configuration & Title
 st.set_page_config(page_title="Nifty MidSmall 400 Breadth", layout="wide")
 st.title("📈 Nifty MidSmallcap 400 Breadth Dashboard")
-st.markdown("### Date-wise % of Mid & Small-cap Stocks Trading Above Selected EMAs (Separate Grids)")
+st.markdown("### Date-wise % of Stocks Trading Above EMAs (2x2 Matrix Layout)")
 st.markdown("---")
 
 # Sidebar Filters
@@ -32,12 +31,7 @@ NIFTY_50_TICKERS = [
 
 TICKERS = MIDSML_400_TICKERS if "MidSmall" in market_type else NIFTY_50_TICKERS
 
-# 3. Dynamic Sidebar EMA Checklist Filter (100 EMA removed)
-st.sidebar.subheader("📐 Select EMAs to Display")
-available_emas = ['10 EMA', '20 EMA', '50 EMA', '200 EMA']
-selected_emas = st.sidebar.multiselect("Choose EMA Lines:", available_emas, default=available_emas)
-
-# 4. Date Filters
+# 3. Date Filters
 max_end_date = datetime.today()
 default_start = max_end_date - timedelta(days=365)
 
@@ -99,9 +93,29 @@ def get_upgraded_breadth_data(market_name):
     
     return grouped[['Date', '10 EMA', '20 EMA', '50 EMA', '200 EMA']]
 
-# Run calculation engine
+# Run Calculation
 with st.spinner(f"Downloading data for {market_type} constituents..."):
     df_breadth_raw = get_upgraded_breadth_data(market_type)
+
+# Helper function to generate single clean plot
+def create_individual_plot(df, column_name, color):
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=df['Date'], y=df[column_name],
+        mode='lines', name=column_name,
+        line=dict(color=color, width=2)
+    ))
+    fig.update_layout(
+        title=dict(text=f"<b>{column_name} Breadth Overview</b>", font=dict(size=15)),
+        xaxis_title="Date",
+        yaxis_title="% Stocks Above",
+        yaxis=dict(range=[0, 105]),
+        hovermode="x unified",
+        template="plotly_white",
+        margin=dict(l=20, r=20, t=40, b=20),
+        height=320
+    )
+    return fig
 
 if not df_breadth_raw.empty:
     df_breadth_raw['Date_Parsed'] = pd.to_datetime(df_breadth_raw['Date'])
@@ -109,51 +123,41 @@ if not df_breadth_raw.empty:
     df_breadth = df_breadth_raw.loc[mask].copy()
 
     if not df_breadth.empty:
-        if selected_emas:
-            # 4 separate rows grid mapping using subplots feature
-            num_plots = len(selected_emas)
-            fig = make_subplots(
-                rows=num_plots, cols=1, 
-                shared_xaxes=True, 
-                vertical_spacing=0.06,
-                subplot_titles=[f"<b>Trend Overview: {ema}</b>" for ema in selected_emas]
-            )
-            
-            colors = {'10 EMA': '#e74c3c', '20 EMA': '#e67e22', '50 EMA': '#f1c40f', '200 EMA': '#2ecc71'}
-            
-            for idx, ema in enumerate(selected_emas):
-                fig.add_trace(
-                    go.Scatter(
-                        x=df_breadth['Date'], y=df_breadth[ema], 
-                        mode='lines', name=ema, line=dict(color=colors[ema], width=2)
-                    ),
-                    row=idx+1, col=1
-                )
-                fig.update_yaxes(title_text="% Stocks Above", range=[0, 105], row=idx+1, col=1)
-                
-            fig.update_layout(
-                title=f"<b>Multi-Panel Market Breadth Subplots ({market_type})</b>",
-                xaxis_title="Date",
-                hovermode="x unified",
-                template="plotly_white",
-                height=220 * num_plots, # Dynamic sizing based on grid count
-                showlegend=False
-            )
-            st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.warning("Kripya Sidebar se kam se kam ek EMA select karein panels dekhne ke liye.")
+        colors = {'10 EMA': '#e74c3c', '20 EMA': '#e67e22', '50 EMA': '#f1c40f', '200 EMA': '#2ecc71'}
         
+        # 🚀 2x2 Matrix layout allocation
+        st.markdown("### 📊 Market Breadth Grids")
+        
+        # ROW 1: 10 EMA (Left) and 20 EMA (Right)
+        row1_col1, row1_col2 = st.columns(2)
+        with row1_col1:
+            st.plotly_chart(create_individual_plot(df_breadth, '10 EMA', colors['10 EMA']), use_container_width=True)
+        with row1_col2:
+            st.plotly_chart(create_individual_plot(df_breadth, '20 EMA', colors['20 EMA']), use_container_width=True)
+            
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        # ROW 2: 50 EMA (Left) and 200 EMA (Right)
+        row2_col1, row2_col2 = st.columns(2)
+        with row2_col1:
+            st.plotly_chart(create_individual_plot(df_breadth, '50 EMA', colors['50 EMA']), use_container_width=True)
+        with row2_col2:
+            st.plotly_chart(create_individual_plot(df_breadth, '200 EMA', colors['200 EMA']), use_container_width=True)
+
+        st.markdown("---")
+        
+        # 🎯 Dynamic Metric Overview 
         latest_row = df_breadth.iloc[-1]
         st.markdown(f"#### 🎯 Current Breadth Status (As of Last Trade Date: {latest_row['Date']})")
-        
-        if selected_emas:
-            cols = st.columns(len(selected_emas))
-            for index, ema in enumerate(selected_emas):
-                cols[index].metric(f"Above {ema}", f"{latest_row[ema]}%")
+        m_col1, m_col2, m_col3, m_col4 = st.columns(4)
+        m_col1.metric("Above 10 EMA", f"{latest_row['10 EMA']}%")
+        m_col2.metric("Above 20 EMA", f"{latest_row['20 EMA']}%")
+        m_col3.metric("Above 50 EMA", f"{latest_row['50 EMA']}%")
+        m_col4.metric("Above 200 EMA", f"{latest_row['200 EMA']}%")
 
+        # Raw Table Preview
         st.markdown("### 📋 Filtered Historical Data Table")
-        display_cols = ['Date'] + selected_emas
-        st.dataframe(df_breadth[display_cols].tail(20).iloc[::-1], use_container_width=True)
+        st.dataframe(df_breadth[['Date', '10 EMA', '20 EMA', '50 EMA', '200 EMA']].tail(20).iloc[::-1], use_container_width=True)
     else:
         st.warning("Selected date range me koi trading data available nahi hai.")
 else:
