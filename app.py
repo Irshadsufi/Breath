@@ -44,7 +44,7 @@ st.sidebar.subheader("📅 Select Custom Date Range")
 start_filter = st.sidebar.date_input("Start Date", default_start)
 end_filter = st.sidebar.date_input("End Date", max_end_date)
 
-# 5. Native EMA Calculation (No pandas-ta required)
+# 5. Native EMA Calculation Math
 def calculate_ema(series, length):
     return series.ewm(span=length, adjust=False).mean()
 
@@ -61,7 +61,6 @@ def get_upgraded_breadth_data(market_name):
         try:
             df = yf.Ticker(ticker).history(start=start_date, end=end_date, auto_adjust=True)
             if not df.empty and len(df) >= 200:
-                # Math based direct calculation
                 df['EMA_10'] = calculate_ema(df['Close'], 10)
                 df['EMA_20'] = calculate_ema(df['Close'], 20)
                 df['EMA_50'] = calculate_ema(df['Close'], 50)
@@ -78,7 +77,9 @@ def get_upgraded_breadth_data(market_name):
 
     first_key = list(stock_dfs.keys())
     trading_dates = list(stock_dfs[first_key].index)
-    breadth_records = []
+    
+    # Explicitly declared as empty list to prevent parser errors
+    breadth_records = list()
     
     for date in trading_dates:
         counts = {'Date': date.strftime('%Y-%m-%d'), '10 EMA': 0, '20 EMA': 0, '50 EMA': 0, '100 EMA': 0, '200 EMA': 0}
@@ -148,4 +149,3 @@ if not df_raw.empty:
         st.warning("Selected date range me koi trading data available nahi hai.")
 else:
     st.error("Failed to fetch NSE data. Please try again.")
-
