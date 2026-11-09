@@ -13,6 +13,11 @@ st.markdown("---")
 # Sidebar Filters
 st.sidebar.header("🎯 Dashboard Controls & Filters")
 
+# 🔄 NEW FEATURE: Force Refresh Button in Sidebar (Ab Reboot nahi karna padega!)
+if st.sidebar.button("🔄 Clear Cache & Refresh Data"):
+    st.cache_data.clear()
+    st.toast("Cache Cleared! Fetching Fresh NSE Data...", icon="🚀")
+
 # 2. Index Selection
 market_type = st.sidebar.selectbox("Select Index Market:", ["Nifty MidSmall 400 (Top Actionable)", "Nifty 50"])
 
@@ -42,7 +47,8 @@ end_filter = st.sidebar.date_input("End Date", max_end_date)
 def calculate_ema(series, length):
     return series.ewm(span=length, adjust=False).mean()
 
-@st.cache_data(ttl=3600)
+# Reduced cache time to 600 seconds (10 Minutes) to auto-update automatically
+@st.cache_data(ttl=600)
 def get_upgraded_breadth_data(market_name):
     selected_tickers = MIDSML_400_TICKERS if "MidSmall" in market_name else NIFTY_50_TICKERS
     end_date = datetime.today()
@@ -97,7 +103,6 @@ def get_upgraded_breadth_data(market_name):
 with st.spinner(f"Downloading data for {market_type} constituents..."):
     df_breadth_raw = get_upgraded_breadth_data(market_type)
 
-# Helper function to generate single clean plot
 def create_individual_plot(df, column_name, color):
     fig = go.Figure()
     fig.add_trace(go.Scatter(
@@ -109,7 +114,7 @@ def create_individual_plot(df, column_name, color):
         title=dict(text=f"<b>{column_name} Breadth Overview</b>", font=dict(size=15)),
         xaxis_title="Date",
         yaxis_title="% Stocks Above",
-        yaxis=dict(range=[0, 105]),
+        yaxis=dict(range=[0, 100]),
         hovermode="x unified",
         template="plotly_white",
         margin=dict(l=20, r=20, t=40, b=20),
@@ -125,7 +130,6 @@ if not df_breadth_raw.empty:
     if not df_breadth.empty:
         colors = {'10 EMA': '#e74c3c', '20 EMA': '#e67e22', '50 EMA': '#f1c40f', '200 EMA': '#2ecc71'}
         
-        # 🚀 2x2 Matrix layout allocation
         st.markdown("### 📊 Market Breadth Grids")
         
         # ROW 1: 10 EMA (Left) and 20 EMA (Right)
@@ -146,7 +150,6 @@ if not df_breadth_raw.empty:
 
         st.markdown("---")
         
-        # 🎯 Dynamic Metric Overview 
         latest_row = df_breadth.iloc[-1]
         st.markdown(f"#### 🎯 Current Breadth Status (As of Last Trade Date: {latest_row['Date']})")
         m_col1, m_col2, m_col3, m_col4 = st.columns(4)
@@ -155,7 +158,6 @@ if not df_breadth_raw.empty:
         m_col3.metric("Above 50 EMA", f"{latest_row['50 EMA']}%")
         m_col4.metric("Above 200 EMA", f"{latest_row['200 EMA']}%")
 
-        # Raw Table Preview
         st.markdown("### 📋 Filtered Historical Data Table")
         st.dataframe(df_breadth[['Date', '10 EMA', '20 EMA', '50 EMA', '200 EMA']].tail(20).iloc[::-1], use_container_width=True)
     else:
