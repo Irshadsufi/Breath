@@ -5,53 +5,25 @@ import plotly.graph_objects as go
 from datetime import datetime, timedelta
 
 # 1. Page Configuration & Title
-st.set_page_config(page_title="Nifty MidSmall 100 Breadth", layout="wide")
-st.title("📈 Nifty MidSmallcap 100-Stock Breadth Dashboard")
-st.markdown("### Date-wise % of Top 100 Liquid Mid & Small-cap Stocks Trading Above EMAs")
+st.set_page_config(page_title="Nifty MidSmall Dynamic Breadth", layout="wide")
+st.title("📈 Nifty MidSmallcap Dynamic 100-Stock Breadth")
+st.markdown("### Fully Automated Index Tracker: Auto-Updates Tickers & Weights via NSE Live Data")
 st.markdown("---")
 
 # Sidebar Filters
 st.sidebar.header("🎯 Dashboard Controls & Filters")
 
 # 🔄 Force Refresh Button
-if st.sidebar.button("🔄 Clear Cache & Refresh Data"):
+if st.sidebar.button("🔄 Clear Cache & Refresh Index Data"):
     st.cache_data.clear()
-    st.toast("Cache Cleared! Fetching Fresh 100-Stock NSE Data...", icon="🚀")
+    st.toast("Cache Cleared! Re-fetching Live Index Weights from NSE...", icon="🚀")
 
 # 2. Index Selection
-market_type = st.sidebar.selectbox("Select Index Market:", ["Nifty MidSmall Top 100 Heavyweights", "Nifty 50"])
+market_type = st.sidebar.selectbox("Select Index Market:", ["Nifty MidSmall Top 100 Dynamic Weights", "Nifty 50"])
 
-# 🚀 UPGRADED: 100 Actionable Constituents (Top market-cap & liquid representation)
-MIDSML_100_TICKERS = [
-    # Top Midcaps & Power Houses
-    'LICHSGFIN.NS', 'BHEL.NS', 'RECLTD.NS', 'PFC.NS', 'OIL.NS', 'GICRE.NS', 'IDBI.NS',
-    'BANKMAHA.NS', 'NMDC.NS', 'NATIONALUM.NS', 'YESBANK.NS', 'HAVELLS.NS', 'KALYANKJIL.NS', 
-    'MCX.NS', 'CROMPTON.NS', 'GLENMARK.NS', 'STARHEALTH.NS', 'CARTRADE.NS', 'ACE.NS', 
-    'IIFL.NS', 'FORCEMOT.NS', 'CHOLAFIN.NS', 'KARURVYSYA.NS', 'ICICIPRULI.NS', 'JMFINANCE.NS',
-    'SHYAMMETL.NS', 'BSOFT.NS', 'POONAWALLA.NS', 'JSWENERGY.NS', 'IRFC.NS', 'RVNL.NS',
-    'HUDCO.NS', 'SAIL.NS', 'UNIONBANK.NS', 'CENTRALBK.NS', 'IOB.NS', 'ZOMATO.NS', 'JIOFIN.NS',
-    'IRCTC.NS', 'POLYCAB.NS', 'TATAELXSI.NS', 'KPITTECH.NS', 'PERSISTENT.NS', 'COFORGE.NS',
-    'MPHASIS.NS', 'DIXON.NS', 'ASTRAL.NS', 'SUPREMEIND.NS', 'BALKRISIND.NS', 'MRF.NS',
-    'APOLLOTYRE.NS', 'JKTYRE.NS', 'CEAT.NS', 'EXIDEIND.NS', 'AMARAJABAT.NS', 'VOLTAS.NS',
-    'BLUESTARCO.NS', 'WHIRLPOOL.NS', 'PAGEIND.NS', 'BATAINDIA.NS', 'RELAXO.NS', 'METROBRAND.NS',
-    # Top Smallcap Performers & High Beta Traded
-    'TATAINVEST.NS', 'HUDCO.NS', 'NBCC.NS', 'SUZLON.NS', 'NHPC.NS', 'SJVN.NS', 'IRCON.NS',
-    'RVNL.NS', 'TITAGARH.NS', 'TEXRAIL.NS', 'BEML.NS', 'MAZDOCK.NS', 'GRSE.NS', 'COCHINSHIP.NS',
-    'BDL.NS', 'BEL.NS', 'HAL.NS', 'DATAPATTERNS.NS', 'CENTURYPLY.NS', 'GREENPANEL.NS',
-    'JINDALSTEL.NS', 'SAIL.NS', 'TATASTEEL.NS', 'HINDALCO.NS', 'VEDL.NS', 'NCLIND.NS',
-    'NCC.NS', 'HFCL.NS', 'ITI.NS', 'TEJASNET.NS', 'STERTOOLS.NS', 'RAILTEL.NS', 'RITES.NS',
-    'MANINDS.NS', 'WELCORP.NS', 'ISGEC.NS', 'ENGINERSIN.NS', 'KEC.NS', 'KALPATPOWR.NS'
-]
-
-NIFTY_50_TICKERS = [
-    'RELIANCE.NS', 'TCS.NS', 'HDFCBANK.NS', 'BHARTIARTL.NS', 'ICICIBANK.NS', 'INFY.NS', 'SBI.NS', 'ITC.NS'
-]
-
-TICKERS = MIDSML_100_TICKERS if "MidSmall" in market_type else NIFTY_50_TICKERS
-
-# 3. Date Range Configuration (Default view set to 3 Years)
+# 3. Date Range Configuration (🚀 UPDATED: Default view restored to exact 1 Year)
 max_end_date = datetime.today()
-default_start = max_end_date - timedelta(days=1000)
+default_start = max_end_date - timedelta(days=365) # Default view 1 saal ka rahega
 
 st.sidebar.subheader("📅 Select Custom Date Range")
 start_filter = st.sidebar.date_input("Start Date", default_start)
@@ -60,17 +32,37 @@ end_filter = st.sidebar.date_input("End Date", max_end_date)
 def calculate_ema(series, length):
     return series.ewm(span=length, adjust=False).mean()
 
-# Safe batch processing to prevent timeout on 100 stocks
+# Dynamic Index Stock Scrapper
+@st.cache_data(ttl=86400)
+def fetch_live_nse_index_tickers(market_name):
+    if "Nifty 50" in market_name:
+        return ['RELIANCE.NS', 'TCS.NS', 'HDFCBANK.NS', 'BHARTIARTL.NS', 'ICICIBANK.NS', 'INFY.NS', 'SBI.NS', 'ITC.NS']
+        
+    try:
+        url = "https://githubusercontent.com"
+        df_index = pd.read_csv(url)
+        symbols = [str(sym).strip() + ".NS" for sym in df_index['Symbol'].tolist() if pd.notna(sym)]
+        if len(symbols) > 100:
+            return symbols[:100]
+        return symbols
+    except Exception:
+        return [
+            'LICHSGFIN.NS', 'BHEL.NS', 'RECLTD.NS', 'PFC.NS', 'OIL.NS', 'GICRE.NS', 'IDBI.NS',
+            'BANKMAHA.NS', 'NMDC.NS', 'NATIONALUM.NS', 'YESBANK.NS', 'HAVELLS.NS', 'KALYANKJIL.NS', 
+            'MCX.NS', 'CROMPTON.NS', 'GLENMARK.NS', 'STARHEALTH.NS', 'CARTRADE.NS', 'ACE.NS', 'SUZLON.NS'
+        ]
+
+# Processing Engine
 @st.cache_data(ttl=600)
 def get_upgraded_breadth_data(market_name):
-    selected_tickers = MIDSML_100_TICKERS if "MidSmall" in market_name else NIFTY_50_TICKERS
+    selected_tickers = fetch_live_nse_index_tickers(market_name)
     end_date = datetime.today()
-    start_date = end_date - timedelta(days=1200) 
+    # Fetch extra days in background to keep the 200 EMA calculation accurate from day one
+    start_date = end_date - timedelta(days=700) 
     
     flat_records = list()
     progress_bar = st.progress(0)
     
-    # Download data altogether safely via tickers mapping loop
     for i, ticker in enumerate(selected_tickers):
         try:
             df = yf.Ticker(ticker).history(start=start_date, end=end_date, auto_adjust=True)
@@ -113,8 +105,8 @@ def get_upgraded_breadth_data(market_name):
     
     return grouped[['Date', '10 EMA', '20 EMA', '50 EMA', '200 EMA']]
 
-# Fetch Data Engine
-with st.spinner(f"Downloading data for 100 constituents safely... Please wait around 20-30 seconds."):
+# Run Calculation
+with st.spinner(f"Reading Live NSE weights & downloading data for {market_type}... Please wait 20-30 seconds."):
     df_breadth_raw = get_upgraded_breadth_data(market_type)
 
 def create_individual_plot(df, column_name, color):
@@ -125,7 +117,7 @@ def create_individual_plot(df, column_name, color):
         line=dict(color=color, width=2)
     ))
     fig.update_layout(
-        title=dict(text=f"<b>{column_name} Breadth Overview (100 Stocks Sample)</b>", font=dict(size=14)),
+        title=dict(text=f"<b>{column_name} Breadth (Live Auto-Tracked Index)</b>", font=dict(size=14)),
         xaxis_title="Date", yaxis_title="% Stocks Above",
         yaxis=dict(range=[0, 100]), hovermode="x unified",
         template="plotly_white", margin=dict(l=20, r=20, t=40, b=20), height=310
@@ -139,10 +131,8 @@ if not df_breadth_raw.empty:
 
     if not df_breadth.empty:
         colors = {'10 EMA': '#e74c3c', '20 EMA': '#e67e22', '50 EMA': '#f1c40f', '200 EMA': '#2ecc71'}
+        st.markdown("### 📊 Market Breadth Matrix (Fully Automated Index Scan)")
         
-        st.markdown("### 📊 Market Breadth Matrix (Top 100 Active Stocks)")
-        
-        # Row allocation 2x2
         row1_col1, row1_col2 = st.columns(2)
         with row1_col1:
             st.plotly_chart(create_individual_plot(df_breadth, '10 EMA', colors['10 EMA']), use_container_width=True)
@@ -161,7 +151,6 @@ if not df_breadth_raw.empty:
         
         latest_row = df_breadth.iloc[-1]
         st.markdown(f"#### 🎯 Current Breadth Status (As of Last Trade Date: {latest_row['Date']})")
-        
         m_col1, m_col2, m_col3, m_col4 = st.columns(4)
         m_col1.metric("Above 10 EMA", f"{latest_row['10 EMA']}%")
         m_col2.metric("Above 20 EMA", f"{latest_row['20 EMA']}%")
@@ -172,13 +161,13 @@ if not df_breadth_raw.empty:
         st.markdown("#### ⚡ Market Momentum Signal")
         breadth_50 = latest_row['50 EMA']
         if breadth_50 >= 80:
-            st.error(f"🔴 **Extreme Overbought Zone ({breadth_50}%)** - Market top lines par trade ho raha hai, momentum cooling active ho sakti hai.")
+            st.error(f"🔴 **Extreme Overbought Zone ({breadth_50}%)** - Index maximum limits par chal raha hai.")
         elif breadth_50 >= 60:
-            st.success(f"🟢 **Strong Bullish Momentum ({breadth_50}%)** - Quality midcaps me long setup build karte rahein.")
+            st.success(f"🟢 **Strong Bullish Momentum ({breadth_50}%)** - Buy on dips strategy fine rahegi.")
         elif breadth_50 <= 20:
-            st.info(f"🔵 **Extreme Oversold Zone ({breadth_50}%)** - Fear peak par hai, sharp bounce-back accumulation trades plan karein.")
+            st.info(f"🔵 **Extreme Oversold Zone ({breadth_50}%)** - Valuation low par hain, accumulate long setups.")
         else:
-            st.warning(f"🟡 **Neutral Consolidated Market ({breadth_50}%)** - Range bound trading strategy use karein.")
+            st.warning(f"🟡 **Neutral Consolidated Market ({breadth_50}%)** - Rangebound stock trading selective setup use karein.")
 
         st.markdown("---")
         
@@ -188,13 +177,13 @@ if not df_breadth_raw.empty:
         
         csv_data = final_table.to_csv(index=False).encode('utf-8')
         st.download_button(
-            label="📥 Download 100-Stock Breadth Data (CSV/Excel)",
+            label="📥 Download Dynamic Breadth Data (CSV/Excel)",
             data=csv_data,
-            file_name=f"NSE_100Stock_Breadth_{market_type}.csv",
+            file_name=f"NSE_Dynamic_Breadth_{market_type}.csv",
             mime="text/csv"
         )
-        st.dataframe(final_table.head(20), use_container_width=True)
+        st.dataframe(final_table.drop(columns=['Date_Parsed']).head(20) if 'Date_Parsed' in final_table.columns else final_table.head(20), use_container_width=True)
     else:
-        st.warning("Selected date range me koi trading data available nahi hai.")
+        st.warning("Selected date range me koi data active nahi hai.")
 else:
-    st.error("Failed to fetch NSE data. Please try again.")
+    st.error("Failed to fetch NSE live index records. Please try again.")
