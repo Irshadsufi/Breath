@@ -17,7 +17,7 @@ if st.sidebar.button("🔄 Clear Cache & Refresh Terminal"):
     st.cache_data.clear()
     st.toast("Cache Cleared! Fetching Fresh Multi-Sector NSE Data...", icon="🚀")
 
-# 🚀 LARGE SCALE SECTOR MAPPING (180+ Tickers for high data density and absolute smoothness)
+# LARGE SCALE SECTOR MAPPING (180+ Tickers for high data density and absolute smoothness)
 SECTOR_MAP = {
     "Nifty MidSmall Top Dynamic Mix": [
         'RECLTD.NS', 'PFC.NS', 'BHEL.NS', 'OIL.NS', 'GICRE.NS', 'IDBI.NS', 'BANKMAHA.NS', 
@@ -142,11 +142,14 @@ if not df_breadth_raw.empty:
         colors = {'10 EMA': '#e74c3c', '20 EMA': '#e67e22', '50 EMA': '#f1c40f', '200 EMA': '#2ecc71'}
         st.markdown(f"### 📊 Sector Breadth Matrix: {selected_sector} Sector Scan")
         
-        # 🚀 NO MORE "WITH" STATEMENTS - Standard clean sequence to eliminate indentation error
-        st.plotly_chart(create_individual_plot(df_breadth, '10 EMA', colors['10 EMA']), use_container_width=True)
-        st.plotly_chart(create_individual_plot(df_breadth, '20 EMA', colors['20 EMA']), use_container_width=True)
-        st.plotly_chart(create_individual_plot(df_breadth, '50 EMA', colors['50 EMA']), use_container_width=True)
-        st.plotly_chart(create_individual_plot(df_breadth, '200 EMA', colors['200 EMA']), use_container_width=True)
+        # 🚀 Grid system via simple layout matrices
+        col1, col2 = st.columns(2)
+        with col1:
+            st.plotly_chart(create_individual_plot(df_breadth, '10 EMA', colors['10 EMA']), use_container_width=True)
+            st.plotly_chart(create_individual_plot(df_breadth, '50 EMA', colors['50 EMA']), use_container_width=True)
+        with col2:
+            st.plotly_chart(create_individual_plot(df_breadth, '20 EMA', colors['20 EMA']), use_container_width=True)
+            st.plotly_chart(create_individual_plot(df_breadth, '200 EMA', colors['200 EMA']), use_container_width=True)
 
         st.markdown("---")
 
