@@ -44,7 +44,6 @@ st.sidebar.subheader("📅 Select Custom Date Range")
 start_filter = st.sidebar.date_input("Start Date", default_start)
 end_filter = st.sidebar.date_input("End Date", max_end_date)
 
-# 5. Native EMA Calculation Math
 def calculate_ema(series, length):
     return series.ewm(span=length, adjust=False).mean()
 
@@ -54,7 +53,8 @@ def get_upgraded_breadth_data(market_name):
     end_date = datetime.today()
     start_date = end_date - timedelta(days=550) 
     
-    stock_dfs = {}
+    # Store records in list to flatten later
+    flat_records = []
     progress_bar = st.progress(0)
     
     for i, ticker in enumerate(selected_tickers):
@@ -66,52 +66,52 @@ def get_upgraded_breadth_data(market_name):
                 df['EMA_50'] = calculate_ema(df['Close'], 50)
                 df['EMA_100'] = calculate_ema(df['Close'], 100)
                 df['EMA_200'] = calculate_ema(df['Close'], 200)
-                stock_dfs[ticker] = df
+                
+                for date, row in df.iterrows():
+                    flat_records.append({
+                        'Date': date.strftime('%Y-%m-%d'),
+                        'Ticker': ticker,
+                        'Above_10': 1 if row['Close'] > row['EMA_10'] else 0,
+                        'Above_20': 1 if row['Close'] > row['EMA_20'] else 0,
+                        'Above_50': 1 if row['Close'] > row['EMA_50'] else 0,
+                        'Above_100': 1 if row['Close'] > row['EMA_100'] else 0,
+                        'Above_200': 1 if row['Close'] > row['EMA_200'] else 0
+                    })
         except Exception:
             continue
         progress_bar.progress((i + 1) / len(selected_tickers))
         
     progress_bar.empty()
-    if not stock_dfs:
+    if not flat_records:
         return pd.DataFrame()
-
-    first_key = list(stock_dfs.keys())
-    trading_dates = list(stock_dfs[first_key].index)
-    
-    # Explicitly declared as empty list to prevent parser errors
-    breadth_records = list()
-    
-    for date in trading_dates:
-        counts = {'Date': date.strftime('%Y-%m-%d'), '10 EMA': 0, '20 EMA': 0, '50 EMA': 0, '100 EMA': 0, '200 EMA': 0}
-        total_active = 0
         
-        for ticker, df in stock_dfs.items():
-            if date in df.index:
-                row = df.loc[date]
-                close = float(row['Close'])
-                
-                if close > float(row['EMA_10']): counts['10 EMA'] += 1
-                if close > float(row['EMA_20']): counts['20 EMA'] += 1
-                if close > float(row['EMA_50']): counts['50 EMA'] += 1
-                if close > float(row['EMA_100']): counts['100 EMA'] += 1
-                if close > float(row['EMA_200']): counts['200 EMA'] += 1
-                total_active += 1
-                
-        if total_active > 0:
-            for key in ['10 EMA', '20 EMA', '50 EMA', '100 EMA', '200 EMA']:
-                counts[key] = round((counts[key] / total_active) * 100, 2)
-            breadth_records.append(counts)
-            
-    return pd.DataFrame(breadth_records)
+    # Standard grouping logic without dictionary pointer keys
+    master_df = pd.DataFrame(flat_records)
+    grouped = master_df.groupby('Date').agg(
+        Total_Active=('Ticker', 'count'),
+        A10=('Above_10', 'sum'),
+        A20=('Above_20', 'sum'),
+        A50=('Above_50', 'sum'),
+        A100=('Above_100', 'sum'),
+        A200=('Above_200', 'sum')
+    ).reset_index()
+    
+    grouped['10 EMA'] = round((grouped['A10'] / grouped['Total_Active']) * 100, 2)
+    grouped['20 EMA'] = round((grouped['A20'] / grouped['Total_Active']) * 100, 2)
+    grouped['50 EMA'] = round((grouped['A50'] / grouped['Total_Active']) * 100, 2)
+    grouped['100 EMA'] = round((grouped['A100'] / grouped['Total_Active']) * 100, 2)
+    grouped['200 EMA'] = round((grouped['A200'] / grouped['Total_Active']) * 100, 2)
+    
+    return grouped[['Date', '10 EMA', '20 EMA', '50 EMA', '100 EMA', '200 EMA']]
 
-# Run extraction
+# Run dynamic logic
 with st.spinner(f"Downloading data for {market_type} constituents..."):
-    df_raw = get_upgraded_breadth_data(market_type)
+    df_breadth_raw = get_upgraded_breadth_data(market_type)
 
-if not df_raw.empty:
-    df_raw['Date_Parsed'] = pd.to_datetime(df_raw['Date'])
-    mask = (df_raw['Date_Parsed'].dt.date >= start_filter) & (df_raw['Date_Parsed'].dt.date <= end_filter)
-    df_breadth = df_raw.loc[mask].copy()
+if not df_breadth_raw.empty:
+    df_breadth_raw['Date_Parsed'] = pd.to_datetime(df_breadth_raw['Date'])
+    mask = (df_breadth_raw['Date_Parsed'].dt.date >= start_filter) & (df_breadth_raw['Date_Parsed'].dt.date <= end_filter)
+    df_breadth = df_breadth_raw.loc[mask].copy()
 
     if not df_breadth.empty:
         if selected_emas:
@@ -127,7 +127,7 @@ if not df_raw.empty:
             fig.update_layout(
                 title=f"<b>Market Breadth Dynamic Chart ({market_type})</b>",
                 xaxis_title="Date", yaxis_title="% of Stocks Above EMA",
-                yaxis=dict(range=[0, 100]), hovermode="x unified",
+                yaxis=dict(range=[0, 105]), hovermode="x unified",
                 template="plotly_white", height=600
             )
             st.plotly_chart(fig, use_container_width=True)
