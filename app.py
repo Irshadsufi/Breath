@@ -154,3 +154,36 @@ if not df_breadth_raw.empty:
         st.markdown("---")
 
         latest_row = df_breadth.iloc[-1]
+                # 🚀 FINAL VISIBLE EXPANSION: Metric Cards, Momentum Alerts & Excel Downloader
+        st.markdown("---")
+        latest_row = df_breadth.iloc[-1]
+        st.markdown(f"#### 🎯 Current {selected_sector} Breadth Status (As of Last Trade Date: {latest_row['Date']})")
+        
+        m_col1, m_col2, m_col3, m_col4 = st.columns(4)
+        m_col1.metric("Above 10 EMA", f"{latest_row['10 EMA']}%")
+        m_col2.metric("Above 20 EMA", f"{latest_row['20 EMA']}%")
+        m_col3.metric("Above 50 EMA", f"{latest_row['50 EMA']}%")
+        m_col4.metric("Above 200 EMA", f"{latest_row['200 EMA']}%")
+
+        st.markdown("#### ⚡ Sector Momentum Signal")
+        breadth_50 = latest_row['50 EMA']
+        if breadth_50 >= 80:
+            st.error(f"🔴 **Extreme Overbought Zone ({breadth_50}%)** - Sector peak levels par hai, new setups me stoploss tightly trail karein.")
+        elif breadth_50 >= 60:
+            st.success(f"🟢 **Strong Bullish Momentum ({breadth_50}%)** - Trend dynamic mode me hai, momentum breakout setup follow karein.")
+        elif breadth_50 <= 20:
+            st.info(f"🔵 **Extreme Oversold Zone ({breadth_50}%)** - High margin of safety area, quality value stocks long accumulate karein.")
+        else:
+            st.warning(f"🟡 **Neutral Consolidated Market ({breadth_50}%)** - Range bound structure inside sector, trace alpha stocks.")
+
+        st.markdown("---")
+        st.markdown("### 📋 Filtered Historical Data Table")
+        final_table = df_breadth[['Date', '10 EMA', '20 EMA', '50 EMA', '200 EMA']].iloc[::-1]
+        csv_data = final_table.to_csv(index=False).encode('utf-8')
+        st.download_button(label="📥 Download Sector Excel Data (CSV)", data=csv_data, file_name=f"NSE_{selected_sector}_Breadth.csv", mime="text/csv")
+        st.dataframe(final_table, use_container_width=True)
+    else:
+        st.warning("Selected date range me koi data active nahi hai.")
+else:
+    st.error("Failed to fetch NSE records.")
+
