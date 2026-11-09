@@ -7,16 +7,15 @@ from datetime import datetime, timedelta
 # 1. Page Configuration & App Headers
 st.set_page_config(page_title="NSE Multi-Sector Breadth Terminal", layout="wide")
 st.title("🏛️ NSE Multi-Sector Breadth Analytics Terminal")
-st.markdown("### Dynamic Sector Rotation Tracker: Auto-Updates Tickers & Weights via NSE Live Data")
+st.markdown("### Dynamic Sector Rotation Tracker: Fully Automated Smooth Indicators")
 st.markdown("---")
 
-# Sidebar Filters
-st.sidebar.header("🎯 Terminal Controls & Filters")
+# Sidebar Controls
+st.sidebar.header("🎯 Terminal Controls")
 
-# Manual Force Refresh Button
 if st.sidebar.button("🔄 Clear Cache & Refresh Terminal"):
     st.cache_data.clear()
-    st.toast("Cache Cleared! Re-fetching Fresh Multi-Sector NSE Data...", icon="🚀")
+    st.toast("Cache Cleared! Fetching Fresh Multi-Sector NSE Data...", icon="🚀")
 
 # 🚀 LARGE SCALE SECTOR MAPPING (180+ Tickers for high data density and absolute smoothness)
 SECTOR_MAP = {
@@ -53,10 +52,8 @@ SECTOR_MAP = {
     "Nifty 50 Core": ['RELIANCE.NS', 'TCS.NS', 'HDFCBANK.NS', 'BHARTIARTL.NS', 'ICICIBANK.NS', 'INFY.NS', 'SBI.NS', 'ITC.NS', 'AXISBANK.NS', 'LT.NS', 'HCLTECH.NS', 'MARUTI.NS', 'ULTRACEMCO.NS', 'SUNPHARMA.NS', 'JSWSTEEL.NS', 'NTPC.NS']
 }
 
-# 2. Dropdown Selection
 selected_sector = st.sidebar.selectbox("🏛️ Select Market Sector:", list(SECTOR_MAP.keys()))
 
-# 3. Default Timeframe Filters (1 Year)
 max_end_date = datetime.today()
 default_start = max_end_date - timedelta(days=365)
 
@@ -72,7 +69,6 @@ def get_upgraded_breadth_data(sector_name):
     selected_tickers = SECTOR_MAP[sector_name]
     end_date = datetime.today()
     start_date = end_date - timedelta(days=700) 
-    
     flat_records = list()
     progress_bar = st.progress(0)
     
@@ -84,7 +80,6 @@ def get_upgraded_breadth_data(sector_name):
                 df['EMA_20'] = calculate_ema(df['Close'], 20)
                 df['EMA_50'] = calculate_ema(df['Close'], 50)
                 df['EMA_200'] = calculate_ema(df['Close'], 200)
-                
                 df.dropna(subset=['Close', 'EMA_10', 'EMA_20', 'EMA_50', 'EMA_200'], inplace=True)
                 
                 for date, row in df.iterrows():
@@ -123,7 +118,7 @@ def get_upgraded_breadth_data(sector_name):
     
     return grouped[['Date', '10 EMA', '20 EMA', '50 EMA', '200 EMA']]
 
-with st.spinner(f"Downloading data securely for {selected_sector}... Please wait."):
+with st.spinner(f"Downloading data safely for {selected_sector}... Please wait."):
     df_breadth_raw = get_upgraded_breadth_data(selected_sector)
 
 def create_individual_plot(df, column_name, color):
@@ -147,13 +142,12 @@ if not df_breadth_raw.empty:
         colors = {'10 EMA': '#e74c3c', '20 EMA': '#e67e22', '50 EMA': '#f1c40f', '200 EMA': '#2ecc71'}
         st.markdown(f"### 📊 Sector Breadth Matrix: {selected_sector} Sector Scan")
         
-        row1_col1, row1_col2 = st.columns(2)
-        with row1_col1:
-            st.plotly_chart(create_individual_plot(df_breadth, '10 EMA', colors['10 EMA']), use_container_width=True)
-        with row1_col2:
-            st.plotly_chart(create_individual_plot(df_breadth, '20 EMA', colors['20 EMA']), use_container_width=True)
-            
-        st.markdown("<br>", unsafe_allow_html=True)
-        
-        row2_col1, row2_col2 = st.columns(2)
-        with row2_col1:
+        # 🚀 NO MORE "WITH" STATEMENTS - Standard clean sequence to eliminate indentation error
+        st.plotly_chart(create_individual_plot(df_breadth, '10 EMA', colors['10 EMA']), use_container_width=True)
+        st.plotly_chart(create_individual_plot(df_breadth, '20 EMA', colors['20 EMA']), use_container_width=True)
+        st.plotly_chart(create_individual_plot(df_breadth, '50 EMA', colors['50 EMA']), use_container_width=True)
+        st.plotly_chart(create_individual_plot(df_breadth, '200 EMA', colors['200 EMA']), use_container_width=True)
+
+        st.markdown("---")
+
+        latest_row = df_breadth.iloc[-1]
