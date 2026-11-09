@@ -1,7 +1,6 @@
 import streamlit as st
 import yfinance as yf
 import pandas as pd
-import pandas_ta as ta
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
 
@@ -45,41 +44,39 @@ st.sidebar.subheader("📅 Select Custom Date Range")
 start_filter = st.sidebar.date_input("Start Date", default_start)
 end_filter = st.sidebar.date_input("End Date", max_end_date)
 
-# 5. Data Fetching Logic (Fixed Cache Signature)
+# 5. Native EMA Calculation (No pandas-ta required)
+def calculate_ema(series, length):
+    return series.ewm(span=length, adjust=False).mean()
+
 @st.cache_data(ttl=3600)
 def get_upgraded_breadth_data(market_name):
-    # Pass string instead of list to prevent hash issues
     selected_tickers = MIDSML_400_TICKERS if "MidSmall" in market_name else NIFTY_50_TICKERS
-    
     end_date = datetime.today()
     start_date = end_date - timedelta(days=550) 
     
     stock_dfs = {}
     progress_bar = st.progress(0)
-    status_text = st.empty()
     
     for i, ticker in enumerate(selected_tickers):
-        status_text.text(f"Fetching Live NSE Data: {ticker}")
         try:
             df = yf.Ticker(ticker).history(start=start_date, end=end_date, auto_adjust=True)
             if not df.empty and len(df) >= 200:
-                df.ta.ema(length=10, append=True)
-                df.ta.ema(length=20, append=True)
-                df.ta.ema(length=50, append=True)
-                df.ta.ema(length=100, append=True)
-                df.ta.ema(length=200, append=True)
+                # Math based direct calculation
+                df['EMA_10'] = calculate_ema(df['Close'], 10)
+                df['EMA_20'] = calculate_ema(df['Close'], 20)
+                df['EMA_50'] = calculate_ema(df['Close'], 50)
+                df['EMA_100'] = calculate_ema(df['Close'], 100)
+                df['EMA_200'] = calculate_ema(df['Close'], 200)
                 stock_dfs[ticker] = df
         except Exception:
             continue
         progress_bar.progress((i + 1) / len(selected_tickers))
         
-    status_text.empty()
     progress_bar.empty()
-
     if not stock_dfs:
         return pd.DataFrame()
 
-    first_key = list(stock_dfs.keys())[0]
+    first_key = list(stock_dfs.keys())
     trading_dates = list(stock_dfs[first_key].index)
     breadth_records = []
     
@@ -92,17 +89,11 @@ def get_upgraded_breadth_data(market_name):
                 row = df.loc[date]
                 close = float(row['Close'])
                 
-                ema10 = 'EMA_10' if 'EMA_10' in df.columns else None
-                ema20 = 'EMA_20' if 'EMA_20' in df.columns else None
-                ema50 = 'EMA_50' if 'EMA_50' in df.columns else None
-                ema100 = 'EMA_100' if 'EMA_100' in df.columns else None
-                ema200 = 'EMA_200' if 'EMA_200' in df.columns else None
-
-                if ema10 and close > float(row[ema10]): counts['10 EMA'] += 1
-                if ema20 and close > float(row[ema20]): counts['20 EMA'] += 1
-                if ema50 and close > float(row[ema50]): counts['50 EMA'] += 1
-                if ema100 and close > float(row[ema100]): counts['100 EMA'] += 1
-                if ema200 and close > float(row[ema200]): counts['200 EMA'] += 1
+                if close > float(row['EMA_10']): counts['10 EMA'] += 1
+                if close > float(row['EMA_20']): counts['20 EMA'] += 1
+                if close > float(row['EMA_50']): counts['50 EMA'] += 1
+                if close > float(row['EMA_100']): counts['100 EMA'] += 1
+                if close > float(row['EMA_200']): counts['200 EMA'] += 1
                 total_active += 1
                 
         if total_active > 0:
@@ -135,7 +126,7 @@ if not df_raw.empty:
             fig.update_layout(
                 title=f"<b>Market Breadth Dynamic Chart ({market_type})</b>",
                 xaxis_title="Date", yaxis_title="% of Stocks Above EMA",
-                yaxis=dict(range=[0, 105]), hovermode="x unified",
+                yaxis=dict(range=[0, 100]), hovermode="x unified",
                 template="plotly_white", height=600
             )
             st.plotly_chart(fig, use_container_width=True)
@@ -157,3 +148,4 @@ if not df_raw.empty:
         st.warning("Selected date range me koi trading data available nahi hai.")
 else:
     st.error("Failed to fetch NSE data. Please try again.")
+
