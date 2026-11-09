@@ -39,7 +39,11 @@ def fetch_live_nse_index_tickers(market_name):
         symbols = [str(sym).strip() + ".NS" for sym in df_index['Symbol'].tolist() if pd.notna(sym)]
         return symbols[:100] if len(symbols) > 100 else symbols
     except Exception:
-        return ['LICHSGFIN.NS', 'BHEL.NS', 'RECLTD.NS', 'PFC.NS', 'OIL.NS', 'GICRE.NS', 'NMDC.NS', 'SUZLON.NS']
+        return [
+            'LICHSGFIN.NS', 'BHEL.NS', 'RECLTD.NS', 'PFC.NS', 'OIL.NS', 'GICRE.NS', 'IDBI.NS',
+            'BANKMAHA.NS', 'NMDC.NS', 'NATIONALUM.NS', 'YESBANK.NS', 'HAVELLS.NS', 'KALYANKJIL.NS', 
+            'MCX.NS', 'CROMPTON.NS', 'GLENMARK.NS', 'STARHEALTH.NS', 'CARTRADE.NS', 'ACE.NS', 'SUZLON.NS'
+        ]
 
 @st.cache_data(ttl=600)
 def get_upgraded_breadth_data(market_name):
@@ -88,8 +92,8 @@ def get_upgraded_breadth_data(market_name):
         A200=('Above_200', 'sum')
     ).reset_index()
     
-    # Bug Fix: Ensure division only occurs when active counts exist, preventing math glitches
-    grouped = grouped[grouped['Total_Active'] > 5].copy() # Filter outliers out
+    # Filter out outlier days where active tickers calculation drops abnormally
+    grouped = grouped[grouped['Total_Active'] > 5].copy()
     
     grouped['10 EMA'] = round((grouped['A10'] / grouped['Total_Active']) * 100, 2)
     grouped['20 EMA'] = round((grouped['A20'] / grouped['Total_Active']) * 100, 2)
@@ -108,7 +112,8 @@ def create_individual_plot(df, column_name, color):
     ))
     fig.update_layout(
         title=dict(text=f"<b>{column_name} Breadth (Data Cleaned)</b>", font=dict(size=14)),
-        xaxis_title="Date", yaxis_title="% Stocks Above", yaxis=dict(range=),
+        xaxis_title="Date", yaxis_title="% Stocks Above", 
+        yaxis=dict(range=[0, 100]), # Fixed syntax bracket matching
         hovermode="x unified", template="plotly_white", margin=dict(l=20, r=20, t=40, b=20), height=310
     )
     return fig
