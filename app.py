@@ -188,7 +188,7 @@ st.markdown(f"#### 🎯 Current {selected_sector} Breadth Status (As of Last Tra
 
 m_col1, m_col2, m_col3, m_col4 = st.columns(4) 
 m_col1.metric("Above 10 EMA", f"{latest_row['10 EMA']}%") 
-m_col2.metric("Above 20 EMA", f"{latest_row['200 EMA']}%")  # Note: Yahan code me '200 EMA' likha tha, agar '20 EMA' chahiye toh change kar lein
+m_col2.metric("Above 20 EMA", f"{latest_row['20 EMA']}%") 
 m_col3.metric("Above 50 EMA", f"{latest_row['50 EMA']}%") 
 m_col4.metric("Above 200 EMA", f"{latest_row['200 EMA']}%") 
 
