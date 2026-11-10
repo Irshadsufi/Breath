@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 # 1. Page Configuration & App Headers
 st.set_page_config(page_title="NSE Multi-Sector Breadth Terminal", layout="wide")
 st.title("🏛️ NSE Multi-Sector Breadth Analytics Terminal")
-st.markdown("### Dynamic Sector Rotation Tracker with Added 10 SMA Signal Lines")
+st.markdown("### Dynamic Sector Rotation Tracker: Fully Automated Smooth Indicators")
 st.markdown("---")
 
 # Sidebar Controls
@@ -17,7 +17,7 @@ if st.sidebar.button("🔄 Clear Cache & Refresh Terminal"):
     st.cache_data.clear()
     st.toast("Cache Cleared! Fetching Fresh Multi-Sector NSE Data...", icon="🚀")
 
-# 🚀 LARGE SCALE SECTOR MAPPING (180+ Tickers for high data density and absolute smoothness)
+# LARGE SCALE SECTOR MAPPING
 SECTOR_MAP = {
     "Nifty MidSmall Top Dynamic Mix": [
         'RECLTD.NS', 'PFC.NS', 'BHEL.NS', 'OIL.NS', 'GICRE.NS', 'IDBI.NS', 'BANKMAHA.NS', 
@@ -111,44 +111,44 @@ def get_upgraded_breadth_data(sector_name):
     min_required_stocks = max(3, int(grouped['Total_Active'].max() * 0.4))
     grouped = grouped[grouped['Total_Active'] >= min_required_stocks].copy()
     
-    grouped['Raw_10'] = round((grouped['A10'] / grouped['Total_Active']) * 100, 2)
-    grouped['Raw_20'] = round((grouped['A20'] / grouped['Total_Active']) * 100, 2)
-    grouped['Raw_50'] = round((grouped['A50'] / grouped['Total_Active']) * 100, 2)
-    grouped['Raw_200'] = round((grouped['A200'] / grouped['Total_Active']) * 100, 2)
+    grouped['10 EMA'] = round((grouped['A10'] / grouped['Total_Active']) * 100, 2)
+    grouped['20 EMA'] = round((grouped['A20'] / grouped['Total_Active']) * 100, 2)
+    grouped['50 EMA'] = round((grouped['A50'] / grouped['Total_Active']) * 100, 2)
+    grouped['200 EMA'] = round((grouped['A200'] / grouped['Total_Active']) * 100, 2)
     
-    grouped['10 EMA'] = round(grouped['Raw_10'].ewm(span=3, adjust=False).mean(), 2)
-    grouped['20 EMA'] = round(grouped['Raw_20'].ewm(span=3, adjust=False).mean(), 2)
-    grouped['50 EMA'] = round(grouped['Raw_50'].ewm(span=4, adjust=False).mean(), 2)
-    grouped['200 EMA'] = round(grouped['Raw_200'].ewm(span=5, adjust=False).mean(), 2)
+    return grouped[['Date', '10 EMA', '20 EMA', '50 EMA', '200 EMA']]
+
+# --- Main Terminal Architecture Implementation ---
+with st.spinner(f"Downloading data safely for {selected_sector}..."):
+    breadth_df = get_upgraded_breadth_data(selected_sector)
+
+if not breadth_df.empty:
+    # Convert 'Date' column to standard datetime types for reliable filtering
+    breadth_df['Date'] = pd.to_datetime(breadth_df['Date'])
     
-    # 🚀 NEW ADDITION: Calculate a 10 SMA for each Breadth Line to use as a dynamic trigger signal
-    grouped['10_SMA_for_10_EMA'] = round(grouped['10 EMA'].rolling(window=10).mean(), 2)
-    grouped['10_SMA_for_20_EMA'] = round(grouped['20 EMA'].rolling(window=10).mean(), 2)
-    grouped['10_SMA_for_50_EMA'] = round(grouped['50 EMA'].rolling(window=10).mean(), 2)
-    grouped['10_SMA_for_200_EMA'] = round(grouped['200 EMA'].rolling(window=10).mean(), 2)
+    # Filter based on custom user parameters
+    start_dt = pd.to_datetime(start_filter)
+    end_dt = pd.to_datetime(end_filter)
+    filtered_df = breadth_df[(breadth_df['Date'] >= start_dt) & (breadth_df['Date'] <= end_dt)].copy()
     
-    return grouped
-
-with st.spinner(f"Downloading data safely... Please wait."):
-    df_breadth_raw = get_upgraded_breadth_data(selected_sector)
-
-# Updated plot helper to draw the base line AND the black 10 SMA signal line
-def create_individual_plot_with_sma(df, column_name, sma_column_name, main_color):
-    fig = go.Figure()
-    # Main Breadth Line
-    fig.add_trace(go.Scatter(
-        x=df['Date'], y=df[column_name], mode='lines', name=f"{column_name}", line=dict(color=main_color, width=2.5)
-    ))
-    # 🖤 Added Black 10 SMA Line
-    fig.add_trace(go.Scatter(
-        x=df['Date'], y=df[sma_column_name], mode='lines', name="10 SMA Signal", line=dict(color='#2c3e50', width=1.5, dash='dot')
-    ))
-    fig.update_layout(
-        title=dict(text=f"<b>{column_name} Breadth + 10 SMA ({selected_sector})</b>", font=dict(size=14)),
-        xaxis_title="Date", yaxis_title="% Stocks Above", yaxis=dict(range=[-5, 105]),
-        hovermode="x unified", template="plotly_white", margin=dict(l=20, r=20, t=40, b=20), height=310,
-        showlegend=True
-    )
-    return fig
-
-if not df_breadth_raw.empty:
+    if not filtered_df.empty:
+        # 2. Metric Dashboard (Latest Available Values)
+        latest_row = filtered_df.iloc[-1]
+        st.markdown(f"#### 📈 Current Market Breadth Profile (As of: {latest_row['Date'].strftime('%d-%b-%Y')})")
+        
+        m1, m2, m3, m4 = st.columns(4)
+        m1.metric(label="⚡ Stocks > 10 EMA (Momentum)", value=f"{latest_row['10 EMA']}%")
+        m2.metric(label="🔥 Stocks > 20 EMA (Short-Term)", value=f"{latest_row['20 EMA']}%")
+        m3.metric(label="💎 Stocks > 50 EMA (Medium-Term)", value=f"{latest_row['50 EMA']}%")
+        m4.metric(label="🛡️ Stocks > 200 EMA (Structural Trend)", value=f"{latest_row['200 EMA']}%")
+        
+        st.markdown("---")
+        
+        # 3. Dynamic Chart Building via Plotly
+        st.markdown(f"#### 📊 Multi-Timeframe Breadth Oscillator: {selected_sector}")
+        
+        fig = go.Figure()
+        
+        fig.add_trace(go.Scatter(x=filtered_df['Date'], y=filtered_df['10 EMA'], name='10 EMA Breadth', line=dict(color='#FF5733', width=1.5)))
+        fig.add_trace(go.Scatter(x=filtered_df['Date'], y=filtered_df['20 EMA'], name='20 EMA Breadth', line=dict(color='#FFC300', width=1.5)))
+        fig.add_trace(go.Scatter(x=filtered_df['Date'], y=filtered_df['50 EMA'], name='50 EMA Breadth', line=dict(color='#33FF57', width=2.0)))
