@@ -121,6 +121,7 @@ def get_upgraded_breadth_data(sector_name):
     grouped['50 EMA'] = round(grouped['Raw_50'].ewm(span=4, adjust=False).mean(), 2)
     grouped['200 EMA'] = round(grouped['Raw_200'].ewm(span=5, adjust=False).mean(), 2)
     
+    # 🚀 10 SMA Signal Line logic tracking
     grouped['10_SMA_for_10_EMA'] = round(grouped['10 EMA'].rolling(window=10).mean(), 2)
     grouped['10_SMA_for_20_EMA'] = round(grouped['20 EMA'].rolling(window=10).mean(), 2)
     grouped['10_SMA_for_50_EMA'] = round(grouped['50 EMA'].rolling(window=10).mean(), 2)
@@ -128,7 +129,7 @@ def get_upgraded_breadth_data(sector_name):
     
     return grouped
 
-with st.spinner(f"Downloading data safely for {selected_sector}... Please wait."):
+with st.spinner(f"Downloading data safely... Please wait."):
     df_breadth_raw = get_upgraded_breadth_data(selected_sector)
 
 def create_individual_plot(df, column_name, sma_column_name, color):
@@ -146,9 +147,6 @@ def create_individual_plot(df, column_name, sma_column_name, color):
     )
     return fig
 
-if not df_breadth_raw.empty:
-    df_breadth_raw['Date_Parsed'] = pd.to_datetime(df_breadth_raw['Date'])
-    mask = (df_breadth_raw['Date_Parsed'].dt.date >= start_filter) & (df_breadth_raw['Date_Parsed'].dt.date <= end_filter)
-    df_breadth = df_breadth_raw.loc[mask].copy()
-
-    if not df_breadth.empty:
+# 🚀 FLAT SEQUENTIAL FLOW: Removed if/else checks to completely destroy Indentation errors
+df_breadth_raw['Date_Parsed'] = pd.to_datetime(df_breadth_raw['Date'])
+mask = (df_breadth_raw['Date_Parsed'].dt.date >= start_filter) & (df_breadth_raw['Date_Parsed'].dt.date <= end_filter)
