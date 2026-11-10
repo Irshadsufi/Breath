@@ -71,7 +71,6 @@ def get_upgraded_breadth_data(sector_name):
     start_date = end_date - timedelta(days=700) 
     flat_records = list()
     
-    # ⚡ SAFE BATCH DOWNLOAD ENGINE: Ek sath fast scan karega taaki network delay na ho
     try:
         data = yf.download(selected_tickers, start=start_date, end=end_date, auto_adjust=True, progress=False, group_by='ticker')
     except Exception:
@@ -81,7 +80,6 @@ def get_upgraded_breadth_data(sector_name):
         try:
             if ticker in data.columns.levels:
                 df = data[ticker].copy()
-                # 🚀 FIX: Forward fill missing live data to prevent blank data drop errors
                 df.ffill(inplace=True)
                 df.dropna(subset=['Close'], inplace=True)
                 
@@ -115,7 +113,6 @@ def get_upgraded_breadth_data(sector_name):
         A200=('Above_200', 'sum')
     ).reset_index()
     
-    # Dynamic lower boundary constraint
     grouped = grouped[grouped['Total_Active'] >= 2].copy()
     
     grouped['Raw_10'] = round((grouped['A10'] / grouped['Total_Active']) * 100, 2)
@@ -128,7 +125,6 @@ def get_upgraded_breadth_data(sector_name):
     grouped['50 EMA'] = round(grouped['Raw_50'].ewm(span=4, adjust=False).mean(), 2)
     grouped['200 EMA'] = round(grouped['Raw_200'].ewm(span=5, adjust=False).mean(), 2)
     
-    # 🚀 10 SMA Signal Lines computations
     grouped['10_SMA_for_10_EMA'] = round(grouped['10 EMA'].rolling(window=10).mean(), 2)
     grouped['10_SMA_for_20_EMA'] = round(grouped['20 EMA'].rolling(window=10).mean(), 2)
     grouped['10_SMA_for_50_EMA'] = round(grouped['50 EMA'].rolling(window=10).mean(), 2)
@@ -150,3 +146,9 @@ def create_individual_plot(df, column_name, sma_column_name, color):
     fig.update_layout(
         title=dict(text=f"<b>{column_name} Sector Breadth ({selected_sector})</b>", font=dict(size=14)),
         xaxis_title="Date", yaxis_title="% Stocks Above", yaxis=dict(range=[-5, 105]),
+        hovermode="x unified", template="plotly_white", margin=dict(l=20, r=20, t=40, b=20), height=310, showlegend=True
+    )
+    return fig
+
+if not df_breadth_raw.empty:
+    df_breadth_raw['Date_Parsed'] = pd.to_datetime(df_breadth_raw['Date'])
