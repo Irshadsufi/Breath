@@ -116,7 +116,7 @@ def get_upgraded_breadth_data(sector_name):
     grouped['50 EMA'] = round((grouped['A50'] / grouped['Total_Active']) * 100, 2)
     grouped['200 EMA'] = round((grouped['A200'] / grouped['Total_Active']) * 100, 2)
     
-    # Calculate 10 SMA reference line targets
+    # 🚀 Calculate 10 SMA reference signal logic for each breadth line
     grouped['10_SMA_for_10_EMA'] = round(grouped['10 EMA'].rolling(window=10).mean(), 2)
     grouped['10_SMA_for_20_EMA'] = round(grouped['20 EMA'].rolling(window=10).mean(), 2)
     grouped['10_SMA_for_50_EMA'] = round(grouped['50 EMA'].rolling(window=10).mean(), 2)
@@ -124,7 +124,7 @@ def get_upgraded_breadth_data(sector_name):
     
     return grouped
 
-with st.spinner(f"Downloading data safely... Please wait."):
+with st.spinner(f"Downloading data safely for {selected_sector}... Please wait."):
     df_breadth_raw = get_upgraded_breadth_data(selected_sector)
 
 def create_individual_plot(df, column_name, sma_column_name, color):
@@ -134,17 +134,14 @@ def create_individual_plot(df, column_name, sma_column_name, color):
     fig.update_layout(title=f"<b>{column_name} Breadth + 10 SMA</b>", xaxis_title="Date", yaxis_title="% Stocks", template="plotly_white", height=310)
     return fig
 
+# Safe Data Slicing
 df_breadth_raw['Date_Parsed'] = pd.to_datetime(df_breadth_raw['Date'])
 mask = (df_breadth_raw['Date_Parsed'].dt.date >= start_filter) & (df_breadth_raw['Date_Parsed'].dt.date <= end_filter)
 df_breadth = df_breadth_raw.loc[mask].copy()
 
 st.markdown(f"### 📊 Sector Breadth Matrix: {selected_sector} Sector Scan")
 
-# Perfect 4 matrix plots sequence
+# Displaying 4 core charts sequentially to kill layout shift bugs
 st.plotly_chart(create_individual_plot(df_breadth, '10 EMA', '10_SMA_for_10_EMA', '#e74c3c'), use_container_width=True)
 st.plotly_chart(create_individual_plot(df_breadth, '20 EMA', '10_SMA_for_20_EMA', '#e67e22'), use_container_width=True)
 st.plotly_chart(create_individual_plot(df_breadth, '50 EMA', '10_SMA_for_50_EMA', '#f1c40f'), use_container_width=True)
-st.plotly_chart(create_individual_plot(df_breadth, '200 EMA', '10_SMA_for_200_EMA', '#2ecc71'), use_container_width=True)
-
-st.markdown("---")
-
