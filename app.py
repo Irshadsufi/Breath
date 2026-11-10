@@ -17,7 +17,7 @@ if st.sidebar.button("🔄 Clear Cache & Refresh Terminal"):
     st.cache_data.clear()
     st.toast("Cache Cleared! Fetching Fresh Multi-Sector NSE Data...", icon="🚀")
 
-# LARGE SCALE SECTOR MAPPING (180+ Tickers for high data density and absolute smoothness)
+# 🚀 LARGE SCALE SECTOR MAPPING (180+ Tickers for high data density and absolute smoothness)
 SECTOR_MAP = {
     "Nifty MidSmall Top Dynamic Mix": [
         'RECLTD.NS', 'PFC.NS', 'BHEL.NS', 'OIL.NS', 'GICRE.NS', 'IDBI.NS', 'BANKMAHA.NS', 
@@ -54,6 +54,7 @@ SECTOR_MAP = {
 
 selected_sector = st.sidebar.selectbox("🏛️ Select Market Sector:", list(SECTOR_MAP.keys()))
 
+# Calendar Configuration Setup
 max_end_date = datetime.today()
 default_start = max_end_date - timedelta(days=365)
 
@@ -70,37 +71,35 @@ def get_upgraded_breadth_data(sector_name):
     end_date = datetime.today() + timedelta(days=1)
     start_date = end_date - timedelta(days=700) 
     flat_records = list()
+    progress_bar = st.progress(0)
     
-    try:
-        data = yf.download(selected_tickers, start=start_date, end=end_date, auto_adjust=True, progress=False, group_by='ticker')
-    except Exception:
-        return pd.DataFrame()
-        
-    for ticker in selected_tickers:
+    for i, ticker in enumerate(selected_tickers):
         try:
-            if ticker in data.columns.levels:
-                df = data[ticker].copy()
-                df.ffill(inplace=True)
-                df.dropna(subset=['Close'], inplace=True)
+            df = yf.Ticker(ticker).history(start=start_date, end=end_date, auto_adjust=True)
+            if not df.empty and len(df) >= 200:
+                df['EMA_10'] = calculate_ema(df['Close'], 10)
+                df['EMA_20'] = calculate_ema(df['Close'], 20)
+                df['EMA_50'] = calculate_ema(df['Close'], 50)
+                df['EMA_200'] = calculate_ema(df['Close'], 200)
                 
-                if not df.empty and len(df) >= 200:
-                    df['EMA_10'] = calculate_ema(df['Close'], 10)
-                    df['EMA_20'] = calculate_ema(df['Close'], 20)
-                    df['EMA_50'] = calculate_ema(df['Close'], 50)
-                    df['EMA_200'] = calculate_ema(df['Close'], 200)
-                    
-                    for date, row in df.iterrows():
-                        flat_records.append({
-                            'Date': date.strftime('%Y-%m-%d'),
-                            'Ticker': ticker,
-                            'Above_10': 1 if float(row['Close']) > float(row['EMA_10']) else 0,
-                            'Above_20': 1 if float(row['Close']) > float(row['EMA_20']) else 0,
-                            'Above_50': 1 if float(row['Close']) > float(row['EMA_50']) else 0,
-                            'Above_200': 1 if float(row['Close']) > float(row['EMA_200']) else 0
-                        })
+                # 🚀 SAFE ENGINE UPGRADE: Forward fill missing data to fully stop blank screen glitches
+                df.ffill(inplace=True)
+                df.dropna(subset=['Close', 'EMA_10', 'EMA_20', 'EMA_50', 'EMA_200'], inplace=True)
+                
+                for date, row in df.iterrows():
+                    flat_records.append({
+                        'Date': date.strftime('%Y-%m-%d'),
+                        'Ticker': ticker,
+                        'Above_10': 1 if float(row['Close']) > float(row['EMA_10']) else 0,
+                        'Above_20': 1 if float(row['Close']) > float(row['EMA_20']) else 0,
+                        'Above_50': 1 if float(row['Close']) > float(row['EMA_50']) else 0,
+                        'Above_200': 1 if float(row['Close']) > float(row['EMA_200']) else 0
+                    })
         except Exception:
             continue
-            
+        progress_bar.progress((i + 1) / len(selected_tickers))
+        
+    progress_bar.empty()
     if not flat_records:
         return pd.DataFrame()
         
@@ -113,7 +112,9 @@ def get_upgraded_breadth_data(sector_name):
         A200=('Above_200', 'sum')
     ).reset_index()
     
-    grouped = grouped[grouped['Total_Active'] >= 2].copy()
+    # Adaptive threshold boundary filter
+    min_required_stocks = max(2, int(grouped['Total_Active'].max() * 0.3))
+    grouped = grouped[grouped['Total_Active'] >= min_required_stocks].copy()
     
     grouped['Raw_10'] = round((grouped['A10'] / grouped['Total_Active']) * 100, 2)
     grouped['Raw_20'] = round((grouped['A20'] / grouped['Total_Active']) * 100, 2)
@@ -125,6 +126,7 @@ def get_upgraded_breadth_data(sector_name):
     grouped['50 EMA'] = round(grouped['Raw_50'].ewm(span=4, adjust=False).mean(), 2)
     grouped['200 EMA'] = round(grouped['Raw_200'].ewm(span=5, adjust=False).mean(), 2)
     
+    # 🚀 Dynamic 10 SMA reference signal logic computations
     grouped['10_SMA_for_10_EMA'] = round(grouped['10 EMA'].rolling(window=10).mean(), 2)
     grouped['10_SMA_for_20_EMA'] = round(grouped['20 EMA'].rolling(window=10).mean(), 2)
     grouped['10_SMA_for_50_EMA'] = round(grouped['50 EMA'].rolling(window=10).mean(), 2)
@@ -132,7 +134,7 @@ def get_upgraded_breadth_data(sector_name):
     
     return grouped
 
-with st.spinner(f"Downloading multi-sector data securely... Please wait."):
+with st.spinner(f"Downloading data safely... Please wait."):
     df_breadth_raw = get_upgraded_breadth_data(selected_sector)
 
 def create_individual_plot(df, column_name, sma_column_name, color):
@@ -147,8 +149,3 @@ def create_individual_plot(df, column_name, sma_column_name, color):
         title=dict(text=f"<b>{column_name} Sector Breadth ({selected_sector})</b>", font=dict(size=14)),
         xaxis_title="Date", yaxis_title="% Stocks Above", yaxis=dict(range=[-5, 105]),
         hovermode="x unified", template="plotly_white", margin=dict(l=20, r=20, t=40, b=20), height=310, showlegend=True
-    )
-    return fig
-
-if not df_breadth_raw.empty:
-    df_breadth_raw['Date_Parsed'] = pd.to_datetime(df_breadth_raw['Date'])
