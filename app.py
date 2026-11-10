@@ -135,24 +135,27 @@ with st.spinner(f"Downloading data safely... Please wait."):
 def create_individual_plot(df, column_name, sma_column_name, color):
     fig = go.Figure()
     
+    # Sector Breadth Line
     fig.add_trace(go.Scatter(
         x=df['Date'], 
         y=df[column_name], 
         mode='lines', 
         name=column_name, 
         line=dict(color=color, width=2.5),
-        hovertemplate="<b>Date:</b> %{x}<br><b>Breadth:</b> %{y}%<extra></extra>"
+        hovertemplate="<b>Breadth:</b> %{y}%<extra></extra>"
     ))
     
+    # 10 SMA Dash Line
     fig.add_trace(go.Scatter(
         x=df['Date'], 
         y=df[sma_column_name], 
         mode='lines', 
         name="10 SMA Line", 
         line=dict(color='#2c3e50', width=1.5, dash='dot'),
-        hovertemplate="<b>Date:</b> %{x}<br><b>10 SMA:</b> %{y}%<extra></extra>"
+        hovertemplate="<b>10 SMA:</b> %{y}%<extra></extra>"
     ))
     
+    # Transparent Hover Label Settings
     fig.update_layout(
         title=f"<b>{column_name} Breadth + 10 SMA</b>", 
         xaxis_title="Date", 
@@ -160,6 +163,11 @@ def create_individual_plot(df, column_name, sma_column_name, color):
         template="plotly_white", 
         height=310,
         hovermode="x unified",  
+        hoverlabel=dict(
+            bgcolor="rgba(0,0,0,0)",       # 🎯 100% Transparent Background
+            bordercolor="rgba(0,0,0,0)",   # No Border Box
+            font=dict(color="#2c3e50", size=12) # Dark Text for clarity
+        ),
         spikedistance=-1,       
         xaxis=dict(
             showspikes=True,    
@@ -169,6 +177,7 @@ def create_individual_plot(df, column_name, sma_column_name, color):
         )
     )
     return fig
+
 
 df_breadth_raw['Date_Parsed'] = pd.to_datetime(df_breadth_raw['Date'])
 mask = (df_breadth_raw['Date_Parsed'].dt.date >= start_filter) & (df_breadth_raw['Date_Parsed'].dt.date <= end_filter)
