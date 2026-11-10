@@ -134,9 +134,40 @@ with st.spinner(f"Downloading data safely... Please wait."):
 
 def create_individual_plot(df, column_name, sma_column_name, color):
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=df['Date'], y=df[column_name], mode='lines', name=column_name, line=dict(color=color, width=2.5)))
-    fig.add_trace(go.Scatter(x=df['Date'], y=df[sma_column_name], mode='lines', name="10 SMA Line", line=dict(color='#2c3e50', width=1.5, dash='dot')))
-    fig.update_layout(title=f"<b>{column_name} Breadth + 10 SMA</b>", xaxis_title="Date", yaxis_title="% Stocks", template="plotly_white", height=310)
+    
+    fig.add_trace(go.Scatter(
+        x=df['Date'], 
+        y=df[column_name], 
+        mode='lines', 
+        name=column_name, 
+        line=dict(color=color, width=2.5),
+        hovertemplate="<b>Date:</b> %{x}<br><b>Breadth:</b> %{y}%<extra></extra>"
+    ))
+    
+    fig.add_trace(go.Scatter(
+        x=df['Date'], 
+        y=df[sma_column_name], 
+        mode='lines', 
+        name="10 SMA Line", 
+        line=dict(color='#2c3e50', width=1.5, dash='dot'),
+        hovertemplate="<b>Date:</b> %{x}<br><b>10 SMA:</b> %{y}%<extra></extra>"
+    ))
+    
+    fig.update_layout(
+        title=f"<b>{column_name} Breadth + 10 SMA</b>", 
+        xaxis_title="Date", 
+        yaxis_title="% Stocks", 
+        template="plotly_white", 
+        height=310,
+        hovermode="x unified",  
+        spikedistance=-1,       
+        xaxis=dict(
+            showspikes=True,    
+            spikethickness=1,
+            spikedash="dash",
+            spikemode="across"
+        )
+    )
     return fig
 
 df_breadth_raw['Date_Parsed'] = pd.to_datetime(df_breadth_raw['Date'])
