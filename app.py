@@ -131,7 +131,8 @@ def get_upgraded_breadth_data(sector_name):
 
 with st.spinner(f"Downloading data safely... Please wait."):
     df_breadth_raw = get_upgraded_breadth_data(selected_sector)
-    def create_individual_plot(df, column_name, sma_column_name, color):
+    
+ def create_individual_plot(df, column_name, sma_column_name, color):
     fig = go.Figure()
     
     # Sector Breadth Line
