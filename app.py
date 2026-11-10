@@ -111,16 +111,12 @@ def get_upgraded_breadth_data(sector_name):
     min_required_stocks = max(3, int(grouped['Total_Active'].max() * 0.4))
     grouped = grouped[grouped['Total_Active'] >= min_required_stocks].copy()
     
-    grouped['Raw_10'] = round((grouped['A10'] / grouped['Total_Active']) * 100, 2)
-    grouped['Raw_20'] = round((grouped['A20'] / grouped['Total_Active']) * 100, 2)
-    grouped['Raw_50'] = round((grouped['A50'] / grouped['Total_Active']) * 100, 2)
-    grouped['Raw_200'] = round((grouped['A200'] / grouped['Total_Active']) * 100, 2)
+    grouped['10 EMA'] = round((grouped['A10'] / grouped['Total_Active']) * 100, 2)
+    grouped['20 EMA'] = round((grouped['A20'] / grouped['Total_Active']) * 100, 2)
+    grouped['50 EMA'] = round((grouped['A50'] / grouped['Total_Active']) * 100, 2)
+    grouped['200 EMA'] = round((grouped['A200'] / grouped['Total_Active']) * 100, 2)
     
-    grouped['10 EMA'] = round(grouped['Raw_10'].ewm(span=3, adjust=False).mean(), 2)
-    grouped['20 EMA'] = round(grouped['Raw_20'].ewm(span=3, adjust=False).mean(), 2)
-    grouped['50 EMA'] = round(grouped['Raw_50'].ewm(span=4, adjust=False).mean(), 2)
-    grouped['200 EMA'] = round(grouped['Raw_200'].ewm(span=5, adjust=False).mean(), 2)
-    
+    # Calculate 10 SMA reference line targets
     grouped['10_SMA_for_10_EMA'] = round(grouped['10 EMA'].rolling(window=10).mean(), 2)
     grouped['10_SMA_for_20_EMA'] = round(grouped['20 EMA'].rolling(window=10).mean(), 2)
     grouped['10_SMA_for_50_EMA'] = round(grouped['50 EMA'].rolling(window=10).mean(), 2)
@@ -144,4 +140,11 @@ df_breadth = df_breadth_raw.loc[mask].copy()
 
 st.markdown(f"### 📊 Sector Breadth Matrix: {selected_sector} Sector Scan")
 
+# Perfect 4 matrix plots sequence
 st.plotly_chart(create_individual_plot(df_breadth, '10 EMA', '10_SMA_for_10_EMA', '#e74c3c'), use_container_width=True)
+st.plotly_chart(create_individual_plot(df_breadth, '20 EMA', '10_SMA_for_20_EMA', '#e67e22'), use_container_width=True)
+st.plotly_chart(create_individual_plot(df_breadth, '50 EMA', '10_SMA_for_50_EMA', '#f1c40f'), use_container_width=True)
+st.plotly_chart(create_individual_plot(df_breadth, '200 EMA', '10_SMA_for_200_EMA', '#2ecc71'), use_container_width=True)
+
+st.markdown("---")
+
