@@ -71,7 +71,6 @@ def get_upgraded_breadth_data(sector_name):
     start_date = end_date - timedelta(days=700) 
     flat_records = list()
     
-    # ⚡ HIGH SPEED BATCH DOWNLOADING: Ek sath saare stocks fast scan honge
     try:
         data = yf.download(selected_tickers, start=start_date, end=end_date, auto_adjust=True, progress=False, group_by='ticker')
     except Exception:
@@ -79,7 +78,7 @@ def get_upgraded_breadth_data(sector_name):
         
     for ticker in selected_tickers:
         try:
-            if ticker in data.columns.levels[0]:
+            if ticker in data.columns.levels:
                 df = data[ticker].dropna(subset=['Close'])
                 if not df.empty and len(df) >= 200:
                     df['EMA_10'] = calculate_ema(df['Close'], 10)
@@ -125,7 +124,6 @@ def get_upgraded_breadth_data(sector_name):
     grouped['50 EMA'] = round(grouped['Raw_50'].ewm(span=4, adjust=False).mean(), 2)
     grouped['200 EMA'] = round(grouped['Raw_200'].ewm(span=5, adjust=False).mean(), 2)
     
-    # 🖤 Dynamic 10 SMA calculations for the reference lines
     grouped['10_SMA_for_10_EMA'] = round(grouped['10 EMA'].rolling(window=10).mean(), 2)
     grouped['10_SMA_for_20_EMA'] = round(grouped['20 EMA'].rolling(window=10).mean(), 2)
     grouped['10_SMA_for_50_EMA'] = round(grouped['50 EMA'].rolling(window=10).mean(), 2)
@@ -147,3 +145,9 @@ def create_individual_plot(df, column_name, sma_column_name, color):
     fig.update_layout(
         title=dict(text=f"<b>{column_name} Sector Breadth ({selected_sector})</b>", font=dict(size=14)),
         xaxis_title="Date", yaxis_title="% Stocks Above", yaxis=dict(range=[-5, 105]),
+        hovermode="x unified", template="plotly_white", margin=dict(l=20, r=20, t=40, b=20), height=310, showlegend=True
+    )
+    return fig
+
+if not df_breadth_raw.empty:
+    df_breadth_raw['Date_Parsed'] = pd.to_datetime(df_breadth_raw['Date'])
