@@ -147,3 +147,5 @@ st.markdown(f"### 📊 Sector Breadth Matrix: {selected_sector} Sector Scan")
 
 # 🚀 FLAT DISPLAY CONFIGURATION: Renders all four charts seamlessly
 st.plotly_chart(create_individual_plot(df_breadth, '10 EMA', '10_SMA_for_10_EMA', '#e74c3c'), use_container_width=True)
+st.plotly_chart(create_individual_plot(df_breadth, '20 EMA', '10_SMA_for_20_EMA', '#e67e22'), use_container_width=True)
+st.plotly_chart(create_individual_plot(df_breadth, '50 EMA', '10_SMA_for_50_EMA', '#f1c40f'), use_container_width=True)
