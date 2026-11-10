@@ -134,16 +134,4 @@ if not df_breadth_raw.empty:
     c2.metric("Above 20 EMA", f"{latest['20 EMA']}%")
     c3.metric("Above 50 EMA", f"{latest['50 EMA']}%")
     c4.metric("Above 200 EMA", f"{latest['200 EMA']}%")
-st.markdown("#### ⚡ Sector Momentum Signal")
-b50 = latest['50 EMA']
-if b50 >= 80: st.error(f"🔴 Extreme Overbought Zone ({b50}%) - Tightly trail stoploss.")
-elif b50 >= 60: st.success(f"🟢 Strong Bullish Momentum ({b50}%) - Follow breakouts.")
-elif b50 <= 20: st.info(f"🔵 Extreme Oversold Zone ({b50}%) - Quality buy accumulation area.")
-else: st.warning(f"🟡 Neutral Consolidated Market ({b50}%) - Range bound movements.")
-    st.markdown("---")
-st.markdown("### 📋 Filtered Historical Data Table")
-final_table = df_breadth[['Date', '10 EMA', '20 EMA', '50 EMA', '200 EMA']].iloc[::-1]
-st.download_button(label="📥 Download Sector Excel Data (CSV)", data=final_table.to_csv(index=False).encode('utf-8'), file_name=f"NSE_{selected_sector}_Breadth.csv", mime="text/csv")
-st.dataframe(final_table, use_container_width=True)
-else:
-st.info("🔄 Live Yahoo Finance server sync delay. Press refresh button on sidebar after 2 mins.")
+
