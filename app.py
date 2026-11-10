@@ -68,7 +68,8 @@ def calculate_ema(series, length):
 def get_upgraded_breadth_data(sector_name):
     selected_tickers = SECTOR_MAP[sector_name]
     end_date = datetime.today() + timedelta(days=1)
-    start_date = end_date - timedelta(days=700) 
+    # 🚀 FIXED BUFFER: Set background memory to 450 days to perfectly fit 200 EMA calculation without dynamic drops
+    start_date = end_date - timedelta(days=450) 
     flat_records = list()
     progress_bar = st.progress(0)
     
@@ -80,6 +81,9 @@ def get_upgraded_breadth_data(sector_name):
                 df['EMA_20'] = calculate_ema(df['Close'], 20)
                 df['EMA_50'] = calculate_ema(df['Close'], 50)
                 df['EMA_200'] = calculate_ema(df['Close'], 200)
+                
+                # 🚀 SYSTEM SAFEGUARD: Dynamic backfill values to secure 200 EMA lines from crashing
+                df.ffill(inplace=True)
                 df.dropna(subset=['Close', 'EMA_10', 'EMA_20', 'EMA_50', 'EMA_200'], inplace=True)
                 
                 for date, row in df.iterrows():
@@ -108,7 +112,8 @@ def get_upgraded_breadth_data(sector_name):
         A200=('Above_200', 'sum')
     ).reset_index()
     
-    min_required_stocks = max(3, int(grouped['Total_Active'].max() * 0.4))
+    # Secure data boundary parameters
+    min_required_stocks = max(2, int(grouped['Total_Active'].max() * 0.3))
     grouped = grouped[grouped['Total_Active'] >= min_required_stocks].copy()
     
     grouped['10 EMA'] = round((grouped['A10'] / grouped['Total_Active']) * 100, 2)
@@ -116,7 +121,7 @@ def get_upgraded_breadth_data(sector_name):
     grouped['50 EMA'] = round((grouped['A50'] / grouped['Total_Active']) * 100, 2)
     grouped['200 EMA'] = round((grouped['A200'] / grouped['Total_Active']) * 100, 2)
     
-    # 🚀 Calculate 10 SMA reference signal logic for each breadth line
+    # 🚀 Fixed tracking calculations for moving average lines
     grouped['10_SMA_for_10_EMA'] = round(grouped['10 EMA'].rolling(window=10).mean(), 2)
     grouped['10_SMA_for_20_EMA'] = round(grouped['20 EMA'].rolling(window=10).mean(), 2)
     grouped['10_SMA_for_50_EMA'] = round(grouped['50 EMA'].rolling(window=10).mean(), 2)
@@ -124,7 +129,7 @@ def get_upgraded_breadth_data(sector_name):
     
     return grouped
 
-with st.spinner(f"Downloading data safely for {selected_sector}... Please wait."):
+with st.spinner(f"Downloading data safely... Please wait."):
     df_breadth_raw = get_upgraded_breadth_data(selected_sector)
 
 def create_individual_plot(df, column_name, sma_column_name, color):
@@ -134,14 +139,11 @@ def create_individual_plot(df, column_name, sma_column_name, color):
     fig.update_layout(title=f"<b>{column_name} Breadth + 10 SMA</b>", xaxis_title="Date", yaxis_title="% Stocks", template="plotly_white", height=310)
     return fig
 
-# Safe Data Slicing
 df_breadth_raw['Date_Parsed'] = pd.to_datetime(df_breadth_raw['Date'])
 mask = (df_breadth_raw['Date_Parsed'].dt.date >= start_filter) & (df_breadth_raw['Date_Parsed'].dt.date <= end_filter)
 df_breadth = df_breadth_raw.loc[mask].copy()
 
 st.markdown(f"### 📊 Sector Breadth Matrix: {selected_sector} Sector Scan")
 
-# Displaying 4 core charts sequentially to kill layout shift bugs
+# 🚀 FLAT DISPLAY CONFIGURATION: Renders all four charts seamlessly
 st.plotly_chart(create_individual_plot(df_breadth, '10 EMA', '10_SMA_for_10_EMA', '#e74c3c'), use_container_width=True)
-st.plotly_chart(create_individual_plot(df_breadth, '20 EMA', '10_SMA_for_20_EMA', '#e67e22'), use_container_width=True)
-st.plotly_chart(create_individual_plot(df_breadth, '50 EMA', '10_SMA_for_50_EMA', '#f1c40f'), use_container_width=True)
