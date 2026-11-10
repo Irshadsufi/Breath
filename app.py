@@ -111,12 +111,16 @@ def get_upgraded_breadth_data(sector_name):
     min_required_stocks = max(3, int(grouped['Total_Active'].max() * 0.4))
     grouped = grouped[grouped['Total_Active'] >= min_required_stocks].copy()
     
-    grouped['10 EMA'] = round((grouped['A10'] / grouped['Total_Active']) * 100, 2)
-    grouped['20 EMA'] = round((grouped['A20'] / grouped['Total_Active']) * 100, 2)
-    grouped['50 EMA'] = round((grouped['A50'] / grouped['Total_Active']) * 100, 2)
-    grouped['200 EMA'] = round((grouped['A200'] / grouped['Total_Active']) * 100, 2)
+    grouped['Raw_10'] = round((grouped['A10'] / grouped['Total_Active']) * 100, 2)
+    grouped['Raw_20'] = round((grouped['A20'] / grouped['Total_Active']) * 100, 2)
+    grouped['Raw_50'] = round((grouped['A50'] / grouped['Total_Active']) * 100, 2)
+    grouped['Raw_200'] = round((grouped['A200'] / grouped['Total_Active']) * 100, 2)
     
-    # 🚀 NEW ADDITION: Calculate 10 SMA reference signal logic for each breadth line
+    grouped['10 EMA'] = round(grouped['Raw_10'].ewm(span=3, adjust=False).mean(), 2)
+    grouped['20 EMA'] = round(grouped['Raw_20'].ewm(span=3, adjust=False).mean(), 2)
+    grouped['50 EMA'] = round(grouped['Raw_50'].ewm(span=4, adjust=False).mean(), 2)
+    grouped['200 EMA'] = round(grouped['Raw_200'].ewm(span=5, adjust=False).mean(), 2)
+    
     grouped['10_SMA_for_10_EMA'] = round(grouped['10 EMA'].rolling(window=10).mean(), 2)
     grouped['10_SMA_for_20_EMA'] = round(grouped['20 EMA'].rolling(window=10).mean(), 2)
     grouped['10_SMA_for_50_EMA'] = round(grouped['50 EMA'].rolling(window=10).mean(), 2)
@@ -127,14 +131,11 @@ def get_upgraded_breadth_data(sector_name):
 with st.spinner(f"Downloading data safely for {selected_sector}... Please wait."):
     df_breadth_raw = get_upgraded_breadth_data(selected_sector)
 
-# Updated helper that plots the main line AND wraps it with the black dotted 10 SMA line
 def create_individual_plot(df, column_name, sma_column_name, color):
     fig = go.Figure()
-    # Main Colored Breadth Wave Line
     fig.add_trace(go.Scatter(
-        x=df['Date'], y=df[column_name], mode='lines', name=column_name, line=dict(color=color, width=2)
+        x=df['Date'], y=df[column_name], mode='lines', name=column_name, line=dict(color=color, width=2.5)
     ))
-    # 🖤 Added: Black Dotted 10 SMA Reference Line
     fig.add_trace(go.Scatter(
         x=df['Date'], y=df[sma_column_name], mode='lines', name="10 SMA Line", line=dict(color='#2c3e50', width=1.5, dash='dot')
     ))
