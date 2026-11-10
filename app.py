@@ -54,8 +54,8 @@ SECTOR_MAP = {
 
 selected_sector = st.sidebar.selectbox("🏛️ Select Market Sector:", list(SECTOR_MAP.keys()))
 
-max_end_date = datetime.today() + timedelta(days=1)
-default_start = max_end_date - timedelta(days=365)
+max_end_date = datetime.today()
+default_start = datetime.today() - timedelta(days=365)
 
 st.sidebar.subheader("📅 Select Custom Date Range")
 start_filter = st.sidebar.date_input("Start Date", default_start)
